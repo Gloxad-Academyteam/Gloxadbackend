@@ -128,8 +128,8 @@ export const signup = async (req, res, next) => {
  */
 export const signin = async (req, res, next) => {
   try {
-    const { email, username, password } = req.body;
-    const identifier = email || username;
+    const { email, username, identifier: bodyIdentifier, password } = req.body;
+    const identifier = bodyIdentifier || email || username;
 
     if (!identifier || !password) {
       return res.status(401).json({
@@ -145,6 +145,12 @@ export const signin = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         error: "Invalid email or password",
+      });
+    }
+
+    if (user.isActive === false || user.isDeactivated === true) {
+      return res.status(403).json({
+        error: "Your account has been deactivated. Please contact support.",
       });
     }
 
@@ -166,6 +172,7 @@ export const signin = async (req, res, next) => {
 
     return res.status(200).json({
       token,
+      accessToken: token,
       user,
     });
   } catch (error) {
@@ -220,7 +227,9 @@ export const signout = async (req, res, next) => {
  */
 export const verifyEmail = async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
+    const email = req.body.email;
+    const rawOtp = req.body.otp ?? req.body.code ?? req.body.verificationCode;
+    const otp = rawOtp !== undefined && rawOtp !== null ? String(rawOtp).trim() : null;
 
     if (!email || !otp) {
       return res.status(400).json({
@@ -487,7 +496,9 @@ export const forgotPassword = async (req, res, next) => {
  */
 export const verifyOtp = async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
+    const email = req.body.email;
+    const rawOtp = req.body.otp ?? req.body.code ?? req.body.verificationCode;
+    const otp = rawOtp !== undefined && rawOtp !== null ? String(rawOtp).trim() : null;
 
     if (!email || !otp) {
       return res.status(400).json({
@@ -540,7 +551,10 @@ export const verifyOtp = async (req, res, next) => {
  */
 export const resetPassword = async (req, res, next) => {
   try {
-    const { email, otp, newPassword } = req.body;
+    const email = req.body.email;
+    const rawOtp = req.body.otp ?? req.body.code ?? req.body.verificationCode;
+    const otp = rawOtp !== undefined && rawOtp !== null ? String(rawOtp).trim() : null;
+    const newPassword = req.body.newPassword || req.body.password;
 
     if (!email || !otp || !newPassword) {
       return res.status(400).json({

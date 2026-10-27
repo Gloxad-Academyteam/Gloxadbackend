@@ -3,7 +3,8 @@ import { env } from "../config/env.js";
 
 let transporter = null;
 
-const smtpPort = env.SMTP_PORT ? Number(env.SMTP_PORT) : 587;
+const rawPort = env.SMTP_PORT ? Number(env.SMTP_PORT) : 587;
+const smtpPort = Number.isFinite(rawPort) && rawPort > 0 ? rawPort : 587;
 if (env.SMTP_HOST && env.SMTP_USER) {
   try {
     transporter = nodemailer.createTransport({
