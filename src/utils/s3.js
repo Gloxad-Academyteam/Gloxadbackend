@@ -14,6 +14,7 @@ import { env } from "../config/env.js";
 
 const ALLOWED_FOLDERS = [
   "avatars",
+  "categories",
   "courses",
   "certifications",
   "resources",
@@ -24,11 +25,62 @@ const ALLOWED_FOLDERS = [
   "certificates",
 ];
 
+export const FOLDER_POLICIES = {
+  avatars: {
+    maxSizeBytes: 2 * 1024 * 1024, // 2MB
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  },
+  categories: {
+    maxSizeBytes: 2 * 1024 * 1024, // 2MB
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/svg+xml"],
+  },
+  logos: {
+    maxSizeBytes: 2 * 1024 * 1024, // 2MB
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"],
+  },
+  signatures: {
+    maxSizeBytes: 2 * 1024 * 1024, // 2MB
+    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"],
+  },
+  documents: {
+    maxSizeBytes: 10 * 1024 * 1024, // 10MB
+    allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png"],
+  },
+  submissions: {
+    maxSizeBytes: 50 * 1024 * 1024, // 50MB
+    allowedMimeTypes: [
+      "application/zip",
+      "application/x-zip-compressed",
+      "application/pdf",
+      "text/plain",
+      "text/javascript",
+      "text/html",
+      "application/json",
+    ],
+  },
+  certifications: {
+    maxSizeBytes: 10 * 1024 * 1024, // 10MB
+    allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png"],
+  },
+  courses: {
+    maxSizeBytes: 500 * 1024 * 1024, // 500MB
+    allowedMimeTypes: ["video/mp4", "video/webm", "video/quicktime", "image/jpeg", "image/png", "image/webp"],
+  },
+  certificates: {
+    maxSizeBytes: 10 * 1024 * 1024, // 10MB
+    allowedMimeTypes: ["application/pdf"],
+  },
+  resources: {
+    maxSizeBytes: 20 * 1024 * 1024, // 20MB
+    allowedMimeTypes: ["application/pdf", "image/jpeg", "image/png", "application/zip"],
+  },
+};
+
 const PRIVATE_FOLDERS = ["documents", "submissions", "certifications", "certificates"];
 
 const getS3Client = () => {
   return new S3Client({
-    region: env.AWS_REGION || "us-east-1",
+    region: env.AWS_REGION || "eu-north-1",
     credentials: {
       accessKeyId: env.AWS_ACCESS_KEY_ID,
       secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
@@ -47,10 +99,29 @@ const hasAwsCredentials = () => {
  * @param {string} params.filename Original filename
  * @param {string} params.fileType File MIME type
  * @param {string} [params.folder] Target storage folder
+ * @param {number} [params.fileSize] Optional file size in bytes
  * @returns {Promise<{ uploadUrl: string, fileUrl?: string, key: string, expiresIn: number }>}
  */
-export const generatePresignedPutUrl = async ({ filename, fileType, folder }) => {
+export const generatePresignedPutUrl = async ({ filename, fileType, folder, fileSize }) => {
   const targetFolder = ALLOWED_FOLDERS.includes(folder) ? folder : "resources";
+  const policy = FOLDER_POLICIES[targetFolder];
+
+  if (policy && policy.allowedMimeTypes && !policy.allowedMimeTypes.includes(fileType)) {
+    const error = new Error(
+      `Invalid file type '${fileType}' for folder '${targetFolder}'. Allowed types: ${policy.allowedMimeTypes.join(", ")}`
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  if (fileSize && policy && policy.maxSizeBytes && Number(fileSize) > policy.maxSizeBytes) {
+    const error = new Error(
+      `File size exceeds maximum allowed limit of ${Math.round(policy.maxSizeBytes / (1024 * 1024))}MB for folder '${targetFolder}'`
+    );
+    error.status = 400;
+    throw error;
+  }
+
   const isPrivate = PRIVATE_FOLDERS.includes(targetFolder);
 
   const sanitizedFilename = (filename || "file")

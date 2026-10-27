@@ -185,6 +185,7 @@ export const submitApplication = async (req, res, next) => {
 export const trackApplication = async (req, res, next) => {
   try {
     const { referenceId } = req.params;
+    const { code } = req.query;
 
     if (!referenceId || typeof referenceId !== "string") {
       return res.status(400).json({
@@ -204,11 +205,17 @@ export const trackApplication = async (req, res, next) => {
       });
     }
 
+    if (code && application.accessCode && String(code).trim().toUpperCase() !== application.accessCode) {
+      return res.status(401).json({
+        error: "Invalid access code for this application",
+        code: "INVALID_ACCESS_CODE",
+      });
+    }
+
     return res.status(200).json({
-      referenceId: application.referenceId,
       status: application.status,
       submittedAt: application.submittedAt,
-      estimatedReviewHours: 48,
+      referenceId: application.referenceId,
     });
   } catch (error) {
     next(error);

@@ -33,8 +33,13 @@ export const enrollFreeCourse = async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot enroll in a course that is not published' });
     }
 
-    if (course.courseType !== 'free') {
+    const isFree = course.courseType === 'free' || course.price === 0;
+    if (!isFree) {
       return res.status(400).json({ error: 'This course is a paid course. Please proceed to payment checkout.' });
+    }
+
+    if (course.enrollmentOpen === false) {
+      return res.status(400).json({ error: 'Enrollment for this course is currently closed.' });
     }
 
     // Check if already enrolled

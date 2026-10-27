@@ -13,7 +13,7 @@ import {
  */
 export const getPresignedUrl = async (req, res, next) => {
   try {
-    const { filename, fileType, folder } = req.body;
+    const { filename, fileType, folder, fileSize } = req.body;
 
     if (
       !filename ||
@@ -32,10 +32,14 @@ export const getPresignedUrl = async (req, res, next) => {
       filename: filename.trim(),
       fileType: fileType.trim(),
       folder: folder ? String(folder).trim() : undefined,
+      fileSize: fileSize !== undefined ? Number(fileSize) : undefined,
     });
 
     return res.status(200).json(presignedData);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 };

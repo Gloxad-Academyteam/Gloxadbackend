@@ -8409,6 +8409,137 @@ Accept: application/json</code></pre>
         </div>
       </div>
 
+      <!-- 26. PUT /api/lms/certificates/:id/revoke -->
+      <div class="endpoint-card" id="ep-lms-certificates-revoke" data-search="certificates revoke admin invalidate credential">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/certificates/:id/revoke</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">admin only</span>
+          </div>
+          <p class="endpoint-desc">Admin revokes a certificate, marking it invalid on public verification checks with an optional reason and audit timestamp.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY (JSON)</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "reason": "Academic integrity violation"
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "message": "Certificate revoked successfully",
+  "certificate": {
+    "_id": "67b0981a2f4c9a0012bc8099",
+    "certificateId": "GLX-CERT-9A8B7C6D5E4F",
+    "revokedAt": "2026-10-27T12:00:00.000Z",
+    "revokedReason": "Academic integrity violation"
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 27. PUT /api/lms/certificates/:id/reissue -->
+      <div class="endpoint-card" id="ep-lms-certificates-reissue" data-search="certificates reissue admin restore unrevoke credential">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/certificates/:id/reissue</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">admin only</span>
+          </div>
+          <p class="endpoint-desc">Admin reissues a previously revoked certificate, clearing revocation state and forcing PDF regeneration with updated timestamp.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "message": "Certificate reissued successfully",
+  "certificate": {
+    "_id": "67b0981a2f4c9a0012bc8099",
+    "certificateId": "GLX-CERT-9A8B7C6D5E4F",
+    "revokedAt": null,
+    "revokedReason": null,
+    "issuedAt": "2026-10-27T12:30:00.000Z"
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 28. GET /api/institutions/admin/members/template -->
+      <div class="endpoint-card" id="ep-inst-members-template" data-search="institution members csv template download bulk student import">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/institutions/admin/members/template</span>
+            <span class="badge-guard" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">institution_admin / admin</span>
+          </div>
+          <p class="endpoint-desc">Downloads sample CSV template with required headers for bulk student membership import.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK (TEXT/CSV DOWNLOAD)</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>email,firstName,lastName,matricNumber,cohortId,department
+student1@partner.edu,John,Doe,ENG/2026/001,650000000000000000000010,Computer Science
+student2@partner.edu,Jane,Smith,ENG/2026/002,650000000000000000000010,Information Technology</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 29. PUT /api/admin/users/:id/reactivate -->
+      <div class="endpoint-card" id="ep-admin-user-reactivate" data-search="admin users reactivate restore soft delete account">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/admin/users/:id/reactivate</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">admin only</span>
+          </div>
+          <p class="endpoint-desc">Admin reactivates a previously deactivated user account, restoring login and platform capabilities.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "message": "User account reactivated successfully",
+  "user": {
+    "_id": "67b0981a2f4c9a0012bc8001",
+    "email": "user@example.com",
+    "isActive": true,
+    "isDeactivated": false
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 30. GET /api/openapi.json -->
+      <div class="endpoint-card" id="ep-openapi-spec" data-search="openapi swagger specification json schema contract types">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/openapi.json</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">public</span>
+          </div>
+          <p class="endpoint-desc">Returns the complete OpenAPI 3.0.3 specification for Gloxad Backend API in machine-readable JSON format for client SDK and TypeScript type generation.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE (APPLICATION/JSON)</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gloxad Academy API",
+    "version": "1.0.0",
+    "description": "Comprehensive RESTful API for Gloxad Academy platform"
+  },
+  "paths": { ... }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
       <!-- Footer with High Contrast -->
       <footer class="doc-footer">
         <div>
@@ -8597,6 +8728,11 @@ Accept: application/json</code></pre>
         <li><a href="#ep-lms-instructor-roster" class="toc-link">GET /api/lms/instructor/cohorts/:id/roster</a></li>
         <li><a href="#ep-lms-admin-analytics" class="toc-link">GET /api/lms/admin/analytics</a></li>
         <li><a href="#ep-lms-admin-certificates-recent" class="toc-link">GET /api/lms/admin/certificates/recent</a></li>
+        <li><a href="#ep-lms-certificates-revoke" class="toc-link">PUT /api/lms/certificates/:id/revoke</a></li>
+        <li><a href="#ep-lms-certificates-reissue" class="toc-link">PUT /api/lms/certificates/:id/reissue</a></li>
+        <li><a href="#ep-inst-members-template" class="toc-link">GET /api/institutions/admin/members/template</a></li>
+        <li><a href="#ep-admin-user-reactivate" class="toc-link">PUT /api/admin/users/:id/reactivate</a></li>
+        <li><a href="#ep-openapi-spec" class="toc-link">GET /api/openapi.json</a></li>
       </ul>
     </aside>
 

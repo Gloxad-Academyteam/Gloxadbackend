@@ -24,7 +24,7 @@ export const getCategories = async (req, res, next) => {
  */
 export const createCategory = async (req, res, next) => {
   try {
-    const { name, icon, order, subCategories } = req.body;
+    const { name, icon, imageUrl, order, subCategories } = req.body;
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "Category name is required" });
@@ -51,6 +51,7 @@ export const createCategory = async (req, res, next) => {
     const category = await Category.create({
       name: trimmedName,
       icon: icon || "",
+      imageUrl: imageUrl ? String(imageUrl).trim() : "",
       order: order !== undefined ? Number(order) : 0,
       subCategories: formattedSubCategories
     });
@@ -84,7 +85,7 @@ export const updateCategory = async (req, res, next) => {
       return res.status(404).json({ error: "Category not found" });
     }
 
-    const { name, icon, order, subCategories } = req.body;
+    const { name, icon, imageUrl, order, subCategories } = req.body;
 
     if (name !== undefined) {
       if (typeof name !== "string" || !name.trim()) {
@@ -106,6 +107,10 @@ export const updateCategory = async (req, res, next) => {
 
     if (icon !== undefined) {
       category.icon = icon;
+    }
+
+    if (imageUrl !== undefined) {
+      category.imageUrl = imageUrl ? String(imageUrl).trim() : "";
     }
 
     if (order !== undefined) {

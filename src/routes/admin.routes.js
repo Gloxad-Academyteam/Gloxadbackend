@@ -7,6 +7,7 @@ import {
   getRecentTransactionsController,
   getUsersController,
   deactivateUserController,
+  reactivateUserController,
   moderateTutorApprovalController,
   getPendingCoursesController,
   getAllCoursesController,
@@ -49,6 +50,7 @@ router.get('/recent-transactions', getRecentTransactionsController);
 router.get('/users', getUsersController);
 router.get('/users/:id', getUserDetailsController);
 router.delete('/users/:id', deactivateUserController);
+router.put('/users/:id/reactivate', reactivateUserController);
 router.put('/tutors/:id/approval', moderateTutorApprovalController);
 
 router.get('/courses/pending', getPendingCoursesController);

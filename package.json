@@ -19,6 +19,8 @@
     "dev": "nodemon src/index.js",
     "build": "node scripts/build.js",
     "seed": "node src/seed.js",
+    "catalog:import": "node scripts/import-catalogue.js",
+    "db:clean": "node scripts/clean-test-data.js",
     "test:smoke": "node scripts/test-e2e-smoke.js",
     "test": "npm run test:smoke"
   },

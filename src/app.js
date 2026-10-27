@@ -91,6 +91,11 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 // Interactive HTML API Documentation Portal
 app.get("/", renderApiDocs);
 
+// Published OpenAPI 3.0 Specification
+app.get("/api/openapi.json", (req, res) => {
+  res.sendFile(path.resolve("src/docs/openapi.json"));
+});
+
 
 // Health check endpoints
 // 1. Process uptime liveness check

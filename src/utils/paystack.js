@@ -12,8 +12,13 @@ export const verifyPaystackTransaction = async (reference) => {
     throw new Error('PAYSTACK_SECRET_KEY is not configured in environment variables');
   }
 
-  // Simulated test reference fallback for unit/integration testing
-  if (reference && reference.startsWith('PAYSTACK_TEST_REF_')) {
+  // Simulated test reference fallback strictly restricted to isolated automated test runs
+  if (
+    process.env.NODE_ENV === 'test' &&
+    process.env.ALLOW_PAYSTACK_TEST_MOCK === 'true' &&
+    reference &&
+    reference.startsWith('PAYSTACK_TEST_REF_')
+  ) {
     return {
       status: 'success',
       amount: 1500000, // 15,000 NGN in Kobo

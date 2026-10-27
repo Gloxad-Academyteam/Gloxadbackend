@@ -13,6 +13,7 @@ import {
   getMembers,
   addMember,
   importMembers,
+  getMemberTemplate,
   resendInvite,
   deleteMember,
 } from "../controllers/member.controller.js";
@@ -36,6 +37,7 @@ router.put("/departments/:id", updateDepartment);
 router.delete("/departments/:id", deleteDepartment);
 
 // 3. Member Roster Management (Step 3 & 4)
+router.get("/members/template", getMemberTemplate);
 router.get("/members", getMembers);
 router.post("/members", addMember);
 router.post("/members/import", importMembers);

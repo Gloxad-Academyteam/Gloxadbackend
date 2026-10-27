@@ -11,14 +11,18 @@ const DEFAULT_CHANNELS = [
 ];
 
 /**
- * Sanitize basic HTML/script tags from user input
+ * Sanitize user input by escaping HTML special characters to prevent stored XSS
  * @param {string} str
  * @returns {string}
  */
 const sanitizeInput = (str) => {
   if (!str || typeof str !== "string") return "";
   return str
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
     .trim();
 };
 

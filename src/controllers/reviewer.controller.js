@@ -76,11 +76,20 @@ export const listApplications = async (req, res, next) => {
       InstitutionApplication.countDocuments(query),
     ]);
 
+    const totalPages = Math.ceil(total / limitNum) || 1;
+
     return res.status(200).json({
+      items: applications,
       applications,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+      },
       total,
       page: pageNum,
-      totalPages: Math.ceil(total / limitNum) || 1,
+      totalPages,
     });
   } catch (error) {
     next(error);
@@ -108,6 +117,11 @@ export const getApplicationDetail = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const latestEvent = reviewHistory[0];
+    const lastUpdated = latestEvent
+      ? `Last updated by ${latestEvent.actorName} on ${new Date(latestEvent.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+      : `Submitted on ${new Date(application.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+
     // Generate signed preview URLs for documents
     const documentsWithPreview = await Promise.all(
       (application.documents || []).map(async (doc) => {
@@ -130,8 +144,10 @@ export const getApplicationDetail = async (req, res, next) => {
       application: {
         ...application,
         documents: documentsWithPreview,
+        lastUpdated,
       },
       reviewHistory,
+      lastUpdated,
     });
   } catch (error) {
     next(error);

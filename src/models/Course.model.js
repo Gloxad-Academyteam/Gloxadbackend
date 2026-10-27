@@ -6,7 +6,10 @@ const lessonSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     videoUrl: { type: String, default: "" },
     duration: { type: String, default: "00:00" },
-    isFreePreview: { type: Boolean, default: false }
+    isFreePreview: { type: Boolean, default: false },
+    creator: { type: String, default: "" },
+    sourceUrl: { type: String, default: "" },
+    embedAllowed: { type: Boolean, default: true }
   },
   { _id: true }
 );
@@ -64,6 +67,11 @@ const courseSchema = new mongoose.Schema(
       type: String,
       enum: ["free", "paid", "trimester"],
       required: true,
+      index: true
+    },
+    enrollmentOpen: {
+      type: Boolean,
+      default: true,
       index: true
     },
     price: { type: Number, default: 0, min: 0 },

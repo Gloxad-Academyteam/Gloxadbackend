@@ -5,6 +5,8 @@ import { LmsLessonProgress } from "../models/LmsLessonProgress.model.js";
 import { LmsQuizAttempt } from "../models/LmsQuizAttempt.model.js";
 import { LmsAssignment } from "../models/LmsAssignment.model.js";
 import { LmsSubmission } from "../models/LmsSubmission.model.js";
+import { LmsLiveSession } from "../models/LmsLiveSession.model.js";
+import { LmsAttendance } from "../models/LmsAttendance.model.js";
 
 /**
  * GET /api/lms/me
@@ -191,6 +193,26 @@ export const getStudentDashboard = async (req, res, next) => {
       },
     ];
 
+    // Dynamic Attendance Calculation per spec:
+    // Attendance = sessions attended divided by sessions held, excluding excused sessions
+    const sessionsHeld = await LmsLiveSession.countDocuments({
+      cohortId: cohort._id,
+      startsAt: { $lte: new Date() },
+    });
+
+    const userAttendances = await LmsAttendance.find({
+      cohortId: cohort._id,
+      userId,
+    });
+
+    const sessionsAttended = userAttendances.filter((a) => a.status === "present").length;
+    const sessionsExcused = userAttendances.filter((a) => a.status === "excused").length;
+    const netSessions = sessionsHeld - sessionsExcused;
+
+    const attendance = netSessions > 0
+      ? Math.min(100, Math.round((sessionsAttended / netSessions) * 100))
+      : 100;
+
     res.status(200).json({
       cohort: {
         _id: cohort._id,
@@ -208,7 +230,7 @@ export const getStudentDashboard = async (req, res, next) => {
           done: submittedAssignmentsCount,
           total: totalAssignments,
         },
-        attendance: 100,
+        attendance,
       },
       upNext,
       upcoming,

@@ -3,6 +3,7 @@ import { Course } from '../models/Course.model.js';
 import { Enrollment } from '../models/Enrollment.model.js';
 import { Question, Note, Announcement } from '../models/QuestionNoteMisc.model.js';
 import { LmsCertificate } from '../models/LmsCertificate.model.js';
+import { buildLinkedInShare } from './lmsCertificate.controller.js';
 
 /**
  * Update student playback position and lesson completion status
@@ -551,7 +552,10 @@ export const verifyCertificateController = async (req, res, next) => {
           badge: lmsCert.badge,
           issuedAt: lmsCert.issuedAt,
           isRevoked: Boolean(lmsCert.revokedAt),
+          revokedAt: lmsCert.revokedAt || null,
+          revokedReason: lmsCert.revokedReason || null,
         },
+        linkedInShare: isValid ? buildLinkedInShare(lmsCert) : null,
       });
     }
 
@@ -579,6 +583,25 @@ export const verifyCertificateController = async (req, res, next) => {
         ? `${enrollment.course.instructor.firstName} ${enrollment.course.instructor.lastName}`.trim()
         : 'Gloxad Academy';
 
+    const issuedDate = new Date(enrollment.completedAt || enrollment.updatedAt || Date.now());
+    const certId = enrollment.certificateId;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://gloxadacademy.com';
+    const certUrl = `${frontendUrl}/verify-certificate/${certId}`;
+
+    const linkedInShare = {
+      name: courseTitle,
+      organizationName: 'Gloxad Academy',
+      issueMonth: issuedDate.getMonth() + 1,
+      issueYear: issuedDate.getFullYear(),
+      certId,
+      certUrl,
+      shareUrl: `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
+        courseTitle
+      )}&organizationName=${encodeURIComponent('Gloxad Academy')}&issueYear=${issuedDate.getFullYear()}&issueMonth=${
+        issuedDate.getMonth() + 1
+      }&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(certId)}`,
+    };
+
     return res.status(200).json({
       valid: true,
       message: 'Certificate verified successfully',
@@ -589,6 +612,7 @@ export const verifyCertificateController = async (req, res, next) => {
         instructorName,
         issuedAt: enrollment.completedAt || enrollment.updatedAt,
       },
+      linkedInShare,
     });
   } catch (error) {
     next(error);

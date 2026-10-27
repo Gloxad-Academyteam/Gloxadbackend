@@ -12,6 +12,23 @@ export const verifyToken = (token) => {
   return jwt.verify(token, secret);
 };
 
+export const verifyTokenWithGracePeriod = (token, graceSeconds = 300) => {
+  const secret = env.JWT_SECRET || process.env.JWT_SECRET;
+  try {
+    return jwt.verify(token, secret);
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      // Verify signature without expiration check
+      const decoded = jwt.verify(token, secret, { ignoreExpiration: true });
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (decoded.exp && nowSeconds - decoded.exp <= graceSeconds) {
+        return decoded;
+      }
+    }
+    throw err;
+  }
+};
+
 export const generateToken = (payload, options = {}) => {
   if (payload && payload._id) {
     return signToken(
@@ -29,5 +46,6 @@ export const generateToken = (payload, options = {}) => {
 export default {
   signToken,
   verifyToken,
+  verifyTokenWithGracePeriod,
   generateToken,
 };

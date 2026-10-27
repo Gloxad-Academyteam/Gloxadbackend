@@ -426,8 +426,49 @@
 
 ---
 
-## Next Up
-- **Phase 4 Complete**: Master Build Plan successfully realized with all 20 units implemented and verified!
+## Phase 5: Frontend Lead Requirements & Security Audit Remediation (Oct 2026) [COMPLETED & VERIFIED]
+
+1. **Security & Production Hardening**:
+   - **Paystack Webhook & Mock Bypass Restricted**: Fully removed backdoor allowing arbitrary checkout verification via references prefixed with `PAYSTACK_TEST_REF_`. Strictly gated test mock bypass behind `process.env.NODE_ENV === 'test' && process.env.ALLOW_PAYSTACK_TEST_MOCK === 'true'`.
+   - **Environment Variable Validation**: `src/config/env.js` now terminates process startup if `JWT_SECRET` or `MONGODB_URI` are missing when `NODE_ENV === 'production'`.
+   - **AWS S3 Bucket & Region Alignment**: Defaulted `AWS_S3_BUCKET` to active AWS account bucket `amzn-v3-buccket-gloxad-sstone` in `eu-north-1`.
+   - **Expanded CORS Policy**: Added `localhost:3000`, `127.0.0.1:3000`, and official domains `https://gloxadacademy.com`, `https://www.gloxadacademy.com` to `FRONTEND_ORIGINS`.
+   - **S3 Presigned URL Folder Policies & Size Enforcements**: Added `categories` folder to allowed folders; introduced strict MIME and file size policies (`avatars`: 2MB, `categories`: 2MB, `logos`: 2MB, `signatures`: 2MB, `documents`: 10MB, `submissions`: 50MB, `courses`: 500MB).
+   - **Rate Limiting Hardening**: Added dedicated limiters: `tokenRefreshLimiter` (30/15min), `uploadPresignedLimiter` (50/15min), `forumPostLimiter` (20/15min), and tightened `partnerApplicationLimiter` to 5/hour per IP.
+   - **Stored XSS Sanitization**: Community forum controller (`src/controllers/lmsCommunity.controller.js`) now uses HTML entity escaping on post titles, content, tags, and threaded replies.
+
+2. **Core Taxonomy & Free Catalog Pipeline (74 Courses)**:
+   - **Category Image Persistence**: `createCategory` and `updateCategory` now accept and persist `imageUrl`.
+   - **Category Normalization**: Course endpoints (`getCourses`, `getCourseBySlugOrId`) now normalize `category` to always return `{ _id, name, slug }`.
+   - **74 Free Catalog Courses Dataset**: Generated `src/data/gloxadCourses2026.json` featuring 74 complete courses with video lessons across the 10 official categories.
+   - **Catalog Upsert Importer**: Created `scripts/import-catalogue.js` to idempotently upsert categories, platform tutor, and all 74 catalog courses. Added `npm run catalog:import`.
+   - **Test Course Cleanup**: Created `scripts/clean-test-data.js` (`npm run db:clean`) to purge dummy test records ("Smoke...", "Jane Tutor") without affecting production catalog courses.
+   - **Instant Free Enrollment**: `src/controllers/enrollment.controller.js` allows immediate free enrollment for any course where `price === 0` or `courseType === 'free'`.
+
+3. **Authentication & Session Continuity**:
+   - **Token Refresh Grace Window**: Implemented `verifyTokenWithGracePeriod(token, 300)` in `src/utils/jwt.js` to allow seamless refresh for tokens that expired within the last 5 minutes (300 seconds), eliminating abrupt student logout on unstable mobile connections.
+
+4. **Institution Portal & Reviewer Drawer**:
+   - **Partner Application Tracking**: `GET /api/institutions/applications/track` supports `?code=` query param verification and returns application status, name, type, and submission date.
+   - **Reviewer Portal Audit Drawer**: `GET /api/admin/institution-applications` and `GET /api/admin/institution-applications/:id` return standard pagination and `lastUpdated: "Last updated by [name] on [date]"`.
+   - **Bulk Member Import CSV Template**: Added `GET /api/institutions/admin/members/template` returning standard CSV headers (`email,firstName,lastName,matricNumber,cohortId,department`).
+
+5. **LMS Live Classrooms & Dynamic Attendance**:
+   - **Dynamic Attendance KPI**: Replaced hardcoded `attendance: 100` in `src/controllers/lmsDashboard.controller.js` with real computed attendance percentage (`attended sessions / (held sessions - excused sessions)`).
+   - **LiveKit Cloud & Lesson Video Synergy**: Clarified distinction between LiveKit Cloud WebRTC credentials for interactive cohort classrooms (`/api/lms/live-sessions/:id/join`) and embedded YouTube/S3 video lessons for the 74 self-paced courses.
+
+6. **LMS Certificates Engine & Social Sharing**:
+   - **Certificate Revocation & Reissuance**: Added `PUT /api/lms/certificates/:id/revoke` and `PUT /api/lms/certificates/:id/reissue` (admin only) with audit logging of `revokedReason` and `revokedBy`.
+   - **LinkedIn Add-to-Profile Integration**: `getMyCertificates` and public verification endpoints (`/api/lms/certificates/verify/:certificateId` and `/api/learning/verify-certificate/:certificateId`) now return structured `linkedInShare` metadata with direct LinkedIn profile deep links.
+
+7. **Admin Platform Analytics & User Reactivation**:
+   - **Dynamic Platform Health**: Replaced hardcoded `uptime: "99.98%"` in `getAdminAnalytics` with dynamic uptime calculation (`process.uptime()`), system health indicators, and memory stats.
+   - **Revenue Currency**: Added `currency: "NGN"` and `revenue: { total, currency }` to `getAdminAnalytics`.
+   - **Admin User Search & Filtering**: Enhanced `getUsersController` with case-insensitive search across `username` and `name`, filter by `isDeactivated` and `isActive`.
+   - **Admin User Reactivation**: Added `PUT /api/admin/users/:id/reactivate`.
+
+8. **OpenAPI 3.0 Standard**:
+   - Published complete OpenAPI 3.0 specification in `src/docs/openapi.json` and mounted `GET /api/openapi.json` for automated frontend SDK generation.
 
 
 ---

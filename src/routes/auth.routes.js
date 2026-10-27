@@ -17,6 +17,7 @@ import { authGuard } from "../middlewares/auth.middleware.js";
 import {
   signupLimiter,
   signinLimiter,
+  tokenRefreshLimiter,
   resendVerificationLimiter,
   verifyEmailLimiter,
   forgotPasswordLimiter,
@@ -30,7 +31,7 @@ const router = Router();
 
 router.post("/signup", signupLimiter, signup);
 router.post("/signin", signinLimiter, signin);
-router.post("/refresh", refreshTokenController);
+router.post("/refresh", tokenRefreshLimiter, refreshTokenController);
 router.get("/me", authGuard, getMe);
 router.post("/signout", signout);
 router.post("/verify-email", verifyEmailLimiter, verifyEmail);

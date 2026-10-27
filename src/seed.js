@@ -132,8 +132,8 @@ async function seedDatabase() {
       biography: '10+ years building web applications.',
       expertiseBio: '10+ years building web applications.',
       areaOfExpertise: 'Web Development',
-      experienceProofs: ['https://gloxad-bucket.s3.amazonaws.com/certifications/jane-degree.pdf'],
-      avatarUrl: 'https://gloxad-bucket.s3.amazonaws.com/avatars/jane.jpg',
+      experienceProofs: ['https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/certifications/jane-degree.pdf'],
+      avatarUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/avatars/jane.jpg',
       socials: { github: 'https://github.com/janetutor', twitter: 'https://twitter.com/janetutor' }
     };
 
@@ -153,8 +153,8 @@ async function seedDatabase() {
       biography: 'Specializing in Python and Machine Learning.',
       expertiseBio: 'Specializing in Python and Machine Learning.',
       areaOfExpertise: 'Data Science',
-      experienceProofs: ['https://gloxad-bucket.s3.amazonaws.com/certifications/john-cert.pdf'],
-      avatarUrl: 'https://gloxad-bucket.s3.amazonaws.com/avatars/john.jpg'
+      experienceProofs: ['https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/certifications/john-cert.pdf'],
+      avatarUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/avatars/john.jpg'
     };
 
     const pendingTutor = {
@@ -173,7 +173,7 @@ async function seedDatabase() {
       biography: 'Awaiting admin approval.',
       expertiseBio: 'Awaiting admin approval.',
       areaOfExpertise: 'Design & UX',
-      experienceProofs: ['https://gloxad-bucket.s3.amazonaws.com/certifications/pending-proof.pdf']
+      experienceProofs: ['https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/certifications/pending-proof.pdf']
     };
 
     const aliceStudent = {
@@ -187,7 +187,7 @@ async function seedDatabase() {
       approvalStatus: 'approved',
       isVerified: true,
       isActive: true,
-      avatarUrl: 'https://gloxad-bucket.s3.amazonaws.com/avatars/alice.jpg'
+      avatarUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/avatars/alice.jpg'
     };
 
     const bobStudent = {
@@ -201,7 +201,7 @@ async function seedDatabase() {
       approvalStatus: 'approved',
       isVerified: true,
       isActive: true,
-      avatarUrl: 'https://gloxad-bucket.s3.amazonaws.com/avatars/bob.jpg'
+      avatarUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/avatars/bob.jpg'
     };
 
     const insertedUsers = await User.insertMany([
@@ -225,7 +225,7 @@ async function seedDatabase() {
         name: 'Web Development',
         slug: 'web-development',
         icon: 'code',
-        imageUrl: 'https://gloxad-bucket.s3.amazonaws.com/categories/web-dev.jpg',
+        imageUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/categories/web-dev.jpg',
         order: 1,
         subCategories: [
           { name: 'Frontend', slug: 'frontend', topics: ['React'] },
@@ -236,7 +236,7 @@ async function seedDatabase() {
         name: 'Data Science',
         slug: 'data-science',
         icon: 'bar-chart',
-        imageUrl: 'https://gloxad-bucket.s3.amazonaws.com/categories/data-science.jpg',
+        imageUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/categories/data-science.jpg',
         order: 2,
         subCategories: [
           { name: 'Machine Learning', slug: 'machine-learning', topics: ['PyTorch'] },
@@ -247,7 +247,7 @@ async function seedDatabase() {
         name: 'Design & UX',
         slug: 'design-ux',
         icon: 'figma',
-        imageUrl: 'https://gloxad-bucket.s3.amazonaws.com/categories/design-ux.jpg',
+        imageUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/categories/design-ux.jpg',
         order: 3,
         subCategories: [
           { name: 'Figma', slug: 'figma', topics: ['Prototyping'] },
@@ -271,8 +271,8 @@ async function seedDatabase() {
       courseType: 'paid',
       price: 49.99,
       discountPrice: 39.99,
-      thumbnail: 'https://gloxad-bucket.s3.amazonaws.com/courses/fs-js-thumb.jpg',
-      trailerVideoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/fs-js-trailer.mp4',
+      thumbnail: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/fs-js-thumb.jpg',
+      trailerVideoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/fs-js-trailer.mp4',
       description: 'Comprehensive guide to backend development with JavaScript and Node.js.',
       skills: ['Node.js', 'Express', 'MongoDB', 'REST APIs'],
       targetAudience: ['Frontend Developers', 'Fullstack Engineers'],
@@ -287,13 +287,13 @@ async function seedDatabase() {
           lessons: [
             {
               title: 'Welcome & Setup',
-              videoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/welcome.mp4',
+              videoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/welcome.mp4',
               duration: '05:00',
               isFreePreview: true
             },
             {
               title: 'Node.js Fundamentals',
-              videoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/node-fund.mp4',
+              videoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/node-fund.mp4',
               duration: '10:00',
               isFreePreview: false
             }
@@ -305,13 +305,13 @@ async function seedDatabase() {
           lessons: [
             {
               title: 'Express Routing',
-              videoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/express-routes.mp4',
+              videoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/express-routes.mp4',
               duration: '15:00',
               isFreePreview: false
             },
             {
               title: 'Middleware Deep Dive',
-              videoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/middleware.mp4',
+              videoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/middleware.mp4',
               duration: '20:00',
               isFreePreview: false
             }
@@ -349,7 +349,7 @@ async function seedDatabase() {
       level: 'beginner',
       courseType: 'free',
       price: 0,
-      thumbnail: 'https://gloxad-bucket.s3.amazonaws.com/courses/py-ds-thumb.jpg',
+      thumbnail: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/py-ds-thumb.jpg',
       description: 'Hands-on intro to Data Science with Python and Pandas.',
       skills: ['Python', 'Pandas', 'Data Analysis'],
       status: 'published',
@@ -362,13 +362,13 @@ async function seedDatabase() {
           lessons: [
             {
               title: 'Intro to Python',
-              videoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/py-intro.mp4',
+              videoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/py-intro.mp4',
               duration: '08:00',
               isFreePreview: true
             },
             {
               title: 'Pandas DataFrames',
-              videoUrl: 'https://gloxad-bucket.s3.amazonaws.com/courses/pandas.mp4',
+              videoUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/pandas.mp4',
               duration: '12:00',
               isFreePreview: true
             }
@@ -401,7 +401,7 @@ async function seedDatabase() {
       level: 'beginner',
       courseType: 'paid',
       price: 29.99,
-      thumbnail: 'https://gloxad-bucket.s3.amazonaws.com/courses/figma-thumb.jpg',
+      thumbnail: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/figma-thumb.jpg',
       description: 'Master UI/UX prototyping with Figma.',
       skills: ['Figma', 'UI Design', 'Wireframing'],
       status: 'draft',
@@ -420,7 +420,7 @@ async function seedDatabase() {
       level: 'intermediate',
       courseType: 'paid',
       price: 39.99,
-      thumbnail: 'https://gloxad-bucket.s3.amazonaws.com/courses/figma-sys.jpg',
+      thumbnail: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/figma-sys.jpg',
       description: 'Master advanced design systems and tokens.',
       skills: ['Figma', 'Design Systems', 'Tokens'],
       status: 'pending',
@@ -561,7 +561,7 @@ async function seedDatabase() {
       allowSignups: true,
       allowPasswordReset: true,
       deletionGraceDays: 30,
-      signatureUrl: 'https://gloxad-bucket.s3.amazonaws.com/signatures/dean-signature.png'
+      signatureUrl: 'https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/signatures/dean-signature.png'
     });
 
     // 11. Create Seed Course Reviews

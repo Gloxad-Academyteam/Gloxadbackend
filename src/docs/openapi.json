@@ -1,0 +1,450 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gloxad Academy Platform API",
+    "version": "1.0.0",
+    "description": "Production and Staging REST API specification for Gloxad Academy, including Free Courses, Partner Applications, Multi-Tenant Workspaces, and Trimester LMS Engine."
+  },
+  "servers": [
+    {
+      "url": "https://gloxad-backend.onrender.com",
+      "description": "Production Server"
+    },
+    {
+      "url": "http://localhost:3001",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "StandardError": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" },
+          "fields": { "type": "object" }
+        },
+        "required": ["error"]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "email": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "role": { "type": "string", "enum": ["student", "instructor", "admin", "institution_admin"] },
+          "isEmailVerified": { "type": "boolean" },
+          "avatarUrl": { "type": "string" },
+          "bio": { "type": "string" },
+          "socialLinks": { "type": "object" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "icon": { "type": "string" },
+          "imageUrl": { "type": "string" },
+          "order": { "type": "number" },
+          "subCategories": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "Course": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "courseType": { "type": "string", "enum": ["free", "paid", "trimester"] },
+          "price": { "type": "number" },
+          "category": { "type": "object" },
+          "thumbnail": { "type": "string" },
+          "status": { "type": "string", "enum": ["draft", "pending", "published", "rejected"] }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/health/liveness": {
+      "get": {
+        "summary": "Process Liveness Probe",
+        "responses": {
+          "200": { "description": "Process is running" }
+        }
+      }
+    },
+    "/api/health/readiness": {
+      "get": {
+        "summary": "Database and Storage Readiness Probe",
+        "responses": {
+          "200": { "description": "Database and storage are connected" },
+          "503": { "description": "Service not ready" }
+        }
+      }
+    },
+    "/api/auth/signup": {
+      "post": {
+        "summary": "Register new student or instructor",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["firstName", "email", "password"],
+                "properties": {
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "role": { "type": "string", "enum": ["student", "instructor"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Account created and session token returned" }
+        }
+      }
+    },
+    "/api/auth/signin": {
+      "post": {
+        "summary": "Authenticate user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Returns token and user object" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token (supports 5-minute expired grace window)",
+        "responses": {
+          "200": { "description": "Returns new access token and user" },
+          "401": { "description": "Expired beyond grace window or revoked" }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "summary": "Retrieve public hierarchical category taxonomy",
+        "responses": {
+          "200": { "description": "List of categories" }
+        }
+      }
+    },
+    "/api/admin/categories": {
+      "post": {
+        "summary": "Create new category with imageUrl",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "icon": { "type": "string" },
+                  "imageUrl": { "type": "string" },
+                  "order": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Category created" }
+        }
+      }
+    },
+    "/api/courses": {
+      "get": {
+        "summary": "Search and filter courses",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "courseType", "in": "query", "schema": { "type": "string", "enum": ["free", "paid", "trimester"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated list of courses" }
+        }
+      }
+    },
+    "/api/enrollments/enroll/{courseId}": {
+      "post": {
+        "summary": "Instant free enrollment in free catalog courses",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "courseId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "201": { "description": "Enrolled successfully" },
+          "200": { "description": "Already enrolled" }
+        }
+      }
+    },
+    "/api/upload/presigned-url": {
+      "post": {
+        "summary": "Generate AWS S3 PUT presigned URL for direct client upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["filename", "fileType"],
+                "properties": {
+                  "filename": { "type": "string" },
+                  "fileType": { "type": "string" },
+                  "folder": { "type": "string" },
+                  "fileSize": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Returns uploadUrl, key, and public fileUrl if public prefix" }
+        }
+      }
+    },
+    "/api/institutions/applications": {
+      "post": {
+        "summary": "Submit partnership request (Review First workflow)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["institutionName", "type", "representative"],
+                "properties": {
+                  "institutionName": { "type": "string" },
+                  "type": { "type": "string" },
+                  "representative": {
+                    "type": "object",
+                    "required": ["name", "role", "email", "phone"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "role": { "type": "string" },
+                      "email": { "type": "string" },
+                      "phone": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Application submitted, returns referenceId" },
+          "409": { "description": "Duplicate pending application exists" }
+        }
+      }
+    },
+    "/api/institutions/applications/{referenceId}": {
+      "get": {
+        "summary": "Track application status by reference ID",
+        "parameters": [
+          { "name": "referenceId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "code", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Returns status and submittedAt" }
+        }
+      }
+    },
+    "/api/institutions/activate": {
+      "post": {
+        "summary": "Activate institution workspace using single-use activation link",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token", "password"],
+                "properties": {
+                  "token": { "type": "string" },
+                  "password": { "type": "string", "minLength": 12 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Institution activated and session token returned" }
+        }
+      }
+    },
+    "/api/institutions/me/dashboard": {
+      "get": {
+        "summary": "Institution Admin Workspace Analytics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns member counts, departments, and subscription status" }
+        }
+      }
+    },
+    "/api/lms/me": {
+      "get": {
+        "summary": "LMS Academic Context and Active Cohort",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns role, enrolled cohorts, and activeCohortId" }
+        }
+      }
+    },
+    "/api/lms/dashboard/student": {
+      "get": {
+        "summary": "Student LMS Dashboard with calculated progress",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns overall, week, assignments, and attendance progress" }
+        }
+      }
+    },
+    "/api/lms/live-sessions": {
+      "get": {
+        "summary": "List cohort live sessions with upcoming countdown info",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of scheduled/live sessions" }
+        }
+      }
+    },
+    "/api/lms/live-sessions/{id}/join": {
+      "post": {
+        "summary": "Join live classroom session and generate WebRTC room token",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Returns roomToken and records attendance" }
+        }
+      }
+    },
+    "/api/lms/certificates/me": {
+      "get": {
+        "summary": "Retrieve earned and in-progress certificates",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns earned and inProgress arrays" }
+        }
+      }
+    },
+    "/api/lms/certificates/{id}/pdf": {
+      "get": {
+        "summary": "Signed download URL for server-generated PDF with verification QR",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Returns signed download link" }
+        }
+      }
+    },
+    "/api/lms/certificates/verify/{certificateId}": {
+      "get": {
+        "summary": "Public certificate verification with LinkedIn share metadata",
+        "parameters": [
+          { "name": "certificateId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Returns valid status, student and course details, and LinkedIn share object" },
+          "404": { "description": "Certificate not found" }
+        }
+      }
+    },
+    "/api/lms/certificates/{id}/revoke": {
+      "put": {
+        "summary": "Admin revokes a certificate",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Certificate revoked" }
+        }
+      }
+    },
+    "/api/lms/certificates/{id}/reissue": {
+      "put": {
+        "summary": "Admin reissues a revoked certificate",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Certificate reissued" }
+        }
+      }
+    },
+    "/api/institutions/admin/members/template": {
+      "get": {
+        "summary": "Download CSV template for bulk student member import",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns CSV file stream with headers email,firstName,lastName,matricNumber,cohortId,department" }
+        }
+      }
+    },
+    "/api/admin/users/{id}/reactivate": {
+      "put": {
+        "summary": "Admin reactivates a previously deactivated user account",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "User account reactivated" }
+        }
+      }
+    }
+  }
+}

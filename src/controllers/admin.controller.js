@@ -103,16 +103,28 @@ export const getRecentTransactionsController = async (req, res, next) => {
  */
 export const getUsersController = async (req, res, next) => {
   try {
-    const { role, status, search } = req.query;
+    const { role, status, search, isDeactivated, isActive } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
 
     const filter = {};
     if (role) filter.role = role;
     if (status) filter.approvalStatus = status;
+    if (isDeactivated !== undefined) {
+      filter.isDeactivated = isDeactivated === 'true';
+    }
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
+    }
     if (search) {
       const regex = new RegExp(search, 'i');
-      filter.$or = [{ firstName: regex }, { lastName: regex }, { email: regex }];
+      filter.$or = [
+        { firstName: regex },
+        { lastName: regex },
+        { email: regex },
+        { username: regex },
+        { name: regex },
+      ];
     }
 
     const total = await User.countDocuments(filter);
@@ -164,7 +176,39 @@ export const deactivateUserController = async (req, res, next) => {
       user: {
         _id: user._id,
         email: user.email,
+        isActive: false,
         isDeactivated: true
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 5b. PUT /api/admin/users/:id/reactivate
+ * Reactivates a deactivated user account.
+ */
+export const reactivateUserController = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    user.isDeactivated = false;
+    user.isActive = true;
+    await user.save();
+
+    return res.status(200).json({
+      message: 'User account reactivated successfully',
+      user: {
+        _id: user._id,
+        email: user.email,
+        isActive: true,
+        isDeactivated: false
       }
     });
   } catch (error) {

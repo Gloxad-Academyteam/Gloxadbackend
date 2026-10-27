@@ -10,6 +10,7 @@ import {
   mockGet,
 } from "../controllers/upload.controller.js";
 import { authGuard } from "../middlewares/auth.middleware.js";
+import { uploadPresignedLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ const presignedAuthGuard = (req, res, next) => {
 };
 
 // Presigned PUT URL generation
-router.post("/presigned-url", presignedAuthGuard, getPresignedUrl);
+router.post("/presigned-url", uploadPresignedLimiter, presignedAuthGuard, getPresignedUrl);
 
 // Signed GET URL generation for private S3 assets
 router.get("/signed-url", authGuard, getSignedUrlController);

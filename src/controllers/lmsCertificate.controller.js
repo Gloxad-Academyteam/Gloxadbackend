@@ -8,6 +8,31 @@ import { generateAndUploadCertificatePdf } from "../utils/certificate.js";
 import { generateSignedGetUrl } from "../utils/s3.js";
 
 /**
+ * Helper to generate LinkedIn Add-to-Profile share metadata
+ */
+export const buildLinkedInShare = (cert) => {
+  const title = cert.title || cert.courseId?.title || "Certificate of Completion";
+  const issuedDate = cert.issuedAt ? new Date(cert.issuedAt) : new Date();
+  const certId = cert.certificateId || cert._id?.toString() || "";
+  const frontendUrl = process.env.FRONTEND_URL || "https://gloxadacademy.com";
+  const certUrl = `${frontendUrl}/verify-certificate/${certId}`;
+
+  return {
+    name: title,
+    organizationName: "Gloxad Academy",
+    issueMonth: issuedDate.getMonth() + 1,
+    issueYear: issuedDate.getFullYear(),
+    certId,
+    certUrl,
+    shareUrl: `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
+      title
+    )}&organizationName=${encodeURIComponent("Gloxad Academy")}&issueYear=${issuedDate.getFullYear()}&issueMonth=${
+      issuedDate.getMonth() + 1
+    }&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(certId)}`,
+  };
+};
+
+/**
  * GET /api/lms/certificates/me
  * Returns in-progress and earned credentials for authenticated student
  */
@@ -67,9 +92,15 @@ export const getMyCertificates = async (req, res, next) => {
       })
     );
 
+    const earnedWithShare = earnedCertificates.map((cert) => {
+      const obj = cert.toObject ? cert.toObject() : { ...cert };
+      obj.linkedInShare = buildLinkedInShare(obj);
+      return obj;
+    });
+
     return res.status(200).json({
       inProgress: inProgressList,
-      earned: earnedCertificates,
+      earned: earnedWithShare,
     });
   } catch (error) {
     next(error);
@@ -191,7 +222,10 @@ export const verifyCertificate = async (req, res, next) => {
           badge: cert.badge,
           issuedAt: cert.issuedAt,
           isRevoked: Boolean(cert.revokedAt),
+          revokedAt: cert.revokedAt || null,
+          revokedReason: cert.revokedReason || null,
         },
+        linkedInShare: isValid ? buildLinkedInShare(cert) : null,
       });
     }
 
@@ -217,6 +251,25 @@ export const verifyCertificate = async (req, res, next) => {
           ? `${enrollment.course.instructor.firstName} ${enrollment.course.instructor.lastName}`.trim()
           : "Gloxad Academy";
 
+      const issuedDate = new Date(enrollment.completedAt || enrollment.updatedAt || Date.now());
+      const certId = enrollment.certificateId;
+      const frontendUrl = process.env.FRONTEND_URL || "https://gloxadacademy.com";
+      const certUrl = `${frontendUrl}/verify-certificate/${certId}`;
+
+      const linkedInShare = {
+        name: courseTitle,
+        organizationName: "Gloxad Academy",
+        issueMonth: issuedDate.getMonth() + 1,
+        issueYear: issuedDate.getFullYear(),
+        certId,
+        certUrl,
+        shareUrl: `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
+          courseTitle
+        )}&organizationName=${encodeURIComponent("Gloxad Academy")}&issueYear=${issuedDate.getFullYear()}&issueMonth=${
+          issuedDate.getMonth() + 1
+        }&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(certId)}`,
+      };
+
       return res.status(200).json({
         valid: true,
         message: "Certificate verified successfully",
@@ -227,6 +280,7 @@ export const verifyCertificate = async (req, res, next) => {
           instructorName,
           issuedAt: enrollment.completedAt || enrollment.updatedAt,
         },
+        linkedInShare,
       });
     }
 
@@ -238,8 +292,79 @@ export const verifyCertificate = async (req, res, next) => {
   }
 };
 
+/**
+ * PUT /api/lms/certificates/:id/revoke
+ * Admin revokes a certificate
+ */
+export const revokeCertificate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let cert = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      cert = await LmsCertificate.findById(id);
+    }
+    if (!cert) {
+      cert = await LmsCertificate.findOne({ certificateId: id });
+    }
+
+    if (!cert) {
+      return res.status(404).json({ error: "Certificate not found" });
+    }
+
+    cert.revokedAt = new Date();
+    cert.revokedReason = req.body.reason || "Revoked by administrator";
+    cert.revokedBy = req.user._id;
+    await cert.save();
+
+    return res.status(200).json({
+      message: "Certificate revoked successfully",
+      certificate: cert,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/lms/certificates/:id/reissue
+ * Admin reissues a previously revoked certificate
+ */
+export const reissueCertificate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let cert = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      cert = await LmsCertificate.findById(id);
+    }
+    if (!cert) {
+      cert = await LmsCertificate.findOne({ certificateId: id });
+    }
+
+    if (!cert) {
+      return res.status(404).json({ error: "Certificate not found" });
+    }
+
+    cert.revokedAt = null;
+    cert.revokedReason = null;
+    cert.revokedBy = null;
+    cert.issuedAt = new Date();
+    cert.pdfKey = ""; // Reset PDF key so newly stamped PDF is generated on next download
+    await cert.save();
+
+    return res.status(200).json({
+      message: "Certificate reissued successfully",
+      certificate: cert,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getMyCertificates,
   getCertificatePdf,
   verifyCertificate,
+  revokeCertificate,
+  reissueCertificate,
+  buildLinkedInShare,
 };

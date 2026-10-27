@@ -44,6 +44,7 @@ This build plan decomposes the Gloxad Academy Backend API into **15 focused, seq
 | **18** | Institution Onboarding & Subscriptions | Multi-Tenant & Billing | Activation token, 6-step wizard persistence, departments, member CSV import, and Paystack subscriptions | None (Core Mongoose, Paystack) |
 | **19** | Trimester LMS Core | Academic LMS Engine | Independent cohorts, curriculum progress, server-timed quizzes, assignments, and grading queue | None (Core Mongoose) |
 | **20** | Live Classrooms, Community & Certificates | Live Video & Social | LiveKit WebRTC join tokens, Socket.io /live, cohort channels/posts, and QR-verifiable PDF certificates | `livekit-server-sdk`, `pdfkit`, `qrcode` |
+| **21** | Frontend Lead Audit Remediation & Catalog Pipeline | Security, Taxonomy & OpenAPI | Paystack backdoor purged, S3 size caps, 74 catalog courses dataset & upsert runner, certificate revoke/reissue, LinkedIn Add-to-Profile share, and OpenAPI 3.0 spec | None (Core Mongoose) |
 
 ---
 
@@ -379,6 +380,21 @@ This build plan decomposes the Gloxad Academy Backend API into **15 focused, seq
 - **Dependencies To Introduce**: `livekit-server-sdk`, `pdfkit`, `qrcode`.
 - **Prerequisite Dependencies**: Unit 19.
 - **Visible Result**: Scheduled classes connect live via LiveKit, community discussions are active, completed students receive verified PDF certificates with QR codes, and platform analytics display live KPIs.
+
+### Unit 21: Frontend Lead Audit Remediation & Catalog Pipeline
+- **System Boundary**: Security Hardening, Taxonomy Alignment, 74 Free Catalog Pipeline & OpenAPI 3.0
+- **What It Builds**:
+  - Security hardening: Paystack test reference backdoor completely removed; S3 folder policies with byte limits and MIME constraints; rate limiters on refresh, presigned uploads, and forum posts; stored XSS entity escaping.
+  - Session resilience: 5-minute clock-skew grace window on JWT token refresh (`verifyTokenWithGracePeriod`).
+  - Course taxonomy & 74 free catalog dataset: `src/data/gloxadCourses2026.json`, idempotent upsert runner (`npm run catalog:import`), test course cleaner (`npm run db:clean`), normalized course category `{ _id, name, slug }`, category image banner persistence, instant free enrollment bypass.
+  - Partner & Reviewer Portals: Application tracking via `?code=` query param, reviewer audit drawer (`lastUpdated: "Last updated by [name] on [date]"`), bulk student member CSV template endpoint (`GET /api/institutions/admin/members/template`).
+  - LMS Live & Attendance: Dynamic real attendance calculation (`attended / (held - excused)`).
+  - Certificates & Social Sharing: Admin certificate revocation (`PUT /api/lms/certificates/:id/revoke`) and reissuance (`PUT /api/lms/certificates/:id/reissue`) with audit logs; LinkedIn Add-to-Profile metadata (`linkedInShare`) on all certificate verification endpoints.
+  - Admin Analytics & Operations: Dynamic process monitor uptime and memory stats; `currency: "NGN"` on total revenue; admin user search by name/username and reactivation (`PUT /api/admin/users/:id/reactivate`).
+  - Specifications: Complete OpenAPI 3.0 schema at `GET /api/openapi.json` and interactive HTML documentation at `GET /` and `GET /api/docs`.
+- **Dependencies To Introduce**: None (Core Express & Mongoose).
+- **Prerequisite Dependencies**: Unit 20.
+- **Visible Result**: 100% of frontend lead audit blockers resolved, 74 courses live in catalog, zero syntax errors across 103 files, and OpenAPI 3.0 spec ready for frontend client generation.
 
 ## Invariants Checklist (Enforced on Every Unit)
 

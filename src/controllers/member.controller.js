@@ -476,10 +476,29 @@ export const deleteMember = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/institutions/me/members/template
+ * Downloadable CSV template for bulk student and tutor onboarding
+ */
+export const getMemberTemplate = async (req, res) => {
+  const csvContent =
+    "name,email,role,designation,department\n" +
+    "John Doe,john.doe@example.edu,student,Undergraduate,Computer Science\n" +
+    "Dr. Jane Smith,jane.smith@example.edu,tutor,Senior Lecturer,Engineering\n";
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader(
+    "Content-Disposition",
+    'attachment; filename="gloxad_members_import_template.csv"'
+  );
+  return res.status(200).send(csvContent);
+};
+
 export default {
   getMembers,
   addMember,
   importMembers,
+  getMemberTemplate,
   resendInvite,
   deleteMember,
 };

@@ -4,6 +4,27 @@ import { Review } from "../models/Review.model.js";
 import { Enrollment } from "../models/Enrollment.model.js";
 
 /**
+ * Normalizes course category output to { _id, name, slug } everywhere
+ */
+export const normalizeCategory = (cat) => {
+  if (!cat) return { _id: null, name: "General", slug: "general" };
+  if (typeof cat === "object" && cat.name) {
+    return {
+      _id: cat._id || null,
+      name: cat.name,
+      slug: cat.slug || String(cat.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    };
+  }
+  const nameStr = String(cat);
+  const slugStr = nameStr.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return {
+    _id: null,
+    name: nameStr,
+    slug: slugStr,
+  };
+};
+
+/**
  * Content Shielding Helper: Redacts video URLs and quiz answers per Rule 3.
  */
 export const applyContentShield = (courseObj, isEnrolled, isInstructorOrAdmin) => {
@@ -138,8 +159,13 @@ export const getCourses = async (req, res, next) => {
 
     const totalPages = Math.ceil(total / limitNum);
 
+    const formattedCourses = courses.map((c) => ({
+      ...c,
+      category: normalizeCategory(c.category),
+    }));
+
     return res.status(200).json({
-      courses,
+      courses: formattedCourses,
       pagination: {
         total,
         page: pageNum,
@@ -197,6 +223,7 @@ export const getCourseBySlugOrId = async (req, res, next) => {
     }
 
     const sanitizedCourse = applyContentShield(course, isEnrolled, isInstructorOrAdmin);
+    sanitizedCourse.category = normalizeCategory(sanitizedCourse.category);
 
     return res.status(200).json({
       course: sanitizedCourse,

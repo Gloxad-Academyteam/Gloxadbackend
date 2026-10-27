@@ -55,6 +55,15 @@ const LmsCertificateSchema = new Schema(
       type: Date,
       default: null,
     },
+    revokedReason: {
+      type: String,
+      default: null,
+    },
+    revokedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   {
     timestamps: true,

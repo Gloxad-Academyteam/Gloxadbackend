@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authGuard } from "../middlewares/auth.middleware.js";
 import { roleGuard } from "../middlewares/role.middleware.js";
 import { cohortGuard } from "../middlewares/cohort.middleware.js";
+import { forumPostLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 // Unit 19 Controllers
 import {
@@ -60,6 +61,8 @@ import {
   getMyCertificates,
   getCertificatePdf,
   verifyCertificate,
+  revokeCertificate,
+  reissueCertificate,
 } from "../controllers/lmsCertificate.controller.js";
 import {
   getInstructorCohorts,
@@ -125,11 +128,11 @@ router.put("/live-sessions/:id/attendance", authGuard, roleGuard("instructor"), 
 // ==========================================
 router.get("/channels", authGuard, getChannels);
 router.get("/posts", authGuard, getPosts);
-router.post("/posts", authGuard, createPost);
+router.post("/posts", authGuard, forumPostLimiter, createPost);
 router.post("/posts/:id/like", authGuard, likePost);
 router.delete("/posts/:id/like", authGuard, unlikePost);
 router.get("/posts/:id/replies", authGuard, getPostReplies);
-router.post("/posts/:id/replies", authGuard, createPostReply);
+router.post("/posts/:id/replies", authGuard, forumPostLimiter, createPostReply);
 router.delete("/posts/:id", authGuard, deletePost);
 router.post("/posts/:id/report", authGuard, reportPost);
 
@@ -139,6 +142,8 @@ router.post("/posts/:id/report", authGuard, reportPost);
 router.get("/certificates/me", authGuard, getMyCertificates);
 router.get("/certificates/:id/pdf", authGuard, getCertificatePdf);
 router.get("/certificates/verify/:certificateId", verifyCertificate);
+router.put("/certificates/:id/revoke", authGuard, roleGuard("admin"), revokeCertificate);
+router.put("/certificates/:id/reissue", authGuard, roleGuard("admin"), reissueCertificate);
 
 // ==========================================
 // Unit 20: Instructor & Admin Analytics
