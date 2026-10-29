@@ -2,13 +2,13 @@
   "name": "gloxad",
   "version": "1.0.0",
   "description": "GLOXAED DATABASE BUILD",
-  "homepage": "https://github.com/STONESCODE001/gloxard-backend#readme",
+  "homepage": "https://github.com/Gloxad-Academyteam/Gloxadbackend#readme",
   "bugs": {
-    "url": "https://github.com/STONESCODE001/gloxard-backend/issues"
+    "url": "https://github.com/Gloxad-Academyteam/Gloxadbackend/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/STONESCODE001/gloxard-backend.git"
+    "url": "git+https://github.com/Gloxad-Academyteam/Gloxadbackend.git"
   },
   "license": "ISC",
   "author": "stonescode",
