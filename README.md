@@ -12,6 +12,16 @@
   Accounts, courses, enrolments, payments, learning progress, messaging, file uploads and the trimester LMS.
 </p>
 
+<p align="center">
+  <a href="https://gloxard-backend.onrender.com/">
+    <img src="https://img.shields.io/badge/API%20Documentation-Live%20Portal-4F46E5?style=for-the-badge" alt="Live API Documentation" />
+  </a>
+</p>
+
+<p align="center">
+  🌐 <strong>Full Live API Documentation:</strong> <a href="https://gloxard-backend.onrender.com/"><strong>https://gloxard-backend.onrender.com/</strong></a>
+</p>
+
 ---
 
 ## Contents
@@ -48,7 +58,9 @@ Gloxad Academy is an online academy that teaches practical technology and busine
 
 It serves learners, tutors and administrators, and powers the **trimester programme**: cohort-based learning with weekly lessons, live classes, coding labs and announcements.
 
-When the server is running, an **interactive API reference** is served at its root address (`GET /`), for example <http://localhost:3001/> (rendered from [`src/views/docs.html`](src/views/docs.html)).
+When the server is running locally, an **interactive API reference** is served at its root address (`GET /`), for example <http://localhost:3001/> (rendered from [`src/views/docs.html`](src/views/docs.html)).
+The **official live documentation portal** for all API endpoints, parameters, request/response schemas, and authentication is hosted at:  
+👉 **[https://gloxard-backend.onrender.com/](https://gloxard-backend.onrender.com/)**
 
 For frontend developers and integration teams, the complete **Backend to Frontend Alignment Specification** covering all 55+ REST endpoints, Socket.io events, payload contracts, and verification sign-offs is available in [BACKEND_TO_FRONTEND_ALIGNMENT_DOC.md](BACKEND_TO_FRONTEND_ALIGNMENT_DOC.md).
 
@@ -387,7 +399,8 @@ Copy `.env.example` to `.env`. The `.env` file is ignored by Git. **Never commit
 
 All routes start with `/api`. Send `Authorization: Bearer <token>` for protected routes. Errors look like `{ "error": "message" }`. 
 
-* **Interactive API Reference:** Served live at root address `GET /` via [`src/views/docs.html`](src/views/docs.html).
+* **Live Interactive Documentation:** **[https://gloxard-backend.onrender.com/](https://gloxard-backend.onrender.com/)**
+* **Local Reference Portal:** Served live at root address `GET /` via [`src/views/docs.html`](src/views/docs.html).
 * **Comprehensive Integration & Spec Document:** Full endpoint specifications, verification matrices, and canonical field mappings are documented in [BACKEND_TO_FRONTEND_ALIGNMENT_DOC.md](BACKEND_TO_FRONTEND_ALIGNMENT_DOC.md).
 
 | Area | Base path | Main routes |
@@ -629,3 +642,5 @@ For any host:
 No license file has been chosen yet. Until one is added, ask the team before reusing this code.
 
 <p align="center"><sub>© 2026 Gloxad Academy</sub></p>
+#   G l o x a d b a c k e n d  
+ 
