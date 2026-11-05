@@ -281,3 +281,96 @@ export const gradeSubmission = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/lms/assignments/:id/revisions
+ * Submits a new assignment revision, preserving previous work in revision history
+ */
+export const submitAssignmentRevision = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    const { repoUrl, fileKey, comment } = req.body;
+
+    const assignment = await LmsAssignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    const submission = await LmsSubmission.findOne({
+      assignmentId: assignment._id,
+      userId,
+    });
+
+    if (!submission) {
+      return res.status(404).json({ error: "No initial submission found. Submit assignment first." });
+    }
+
+    // Preserve prior submission in revisions array
+    if (!submission.revisions) submission.revisions = [];
+    submission.revisions.push({
+      fileKey: submission.fileKey,
+      repoUrl: submission.repoUrl,
+      comment: submission.comment,
+      submittedAt: submission.submittedAt,
+      feedback: submission.grade?.feedback || "",
+    });
+
+    if (repoUrl !== undefined) submission.repoUrl = repoUrl.trim();
+    if (fileKey !== undefined) submission.fileKey = fileKey;
+    if (comment !== undefined) submission.comment = comment;
+    submission.submittedAt = new Date();
+    submission.status = "pending_review";
+
+    await submission.save();
+
+    return res.status(200).json({
+      message: "Assignment revision submitted successfully",
+      submission,
+      revisionCount: submission.revisions.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/lms/assignments/:id/history
+ * Returns student's submission history, revisions, grade, and feedback timeline
+ */
+export const getAssignmentSubmissionHistory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const submission = await LmsSubmission.findOne({
+      assignmentId: id,
+      userId,
+    })
+      .populate("grade.gradedBy", "firstName lastName avatarUrl")
+      .lean();
+
+    if (!submission) {
+      return res.status(200).json({
+        hasSubmission: false,
+        history: [],
+      });
+    }
+
+    return res.status(200).json({
+      hasSubmission: true,
+      current: {
+        _id: submission._id,
+        fileKey: submission.fileKey,
+        repoUrl: submission.repoUrl,
+        comment: submission.comment,
+        status: submission.status,
+        submittedAt: submission.submittedAt,
+        grade: submission.grade,
+      },
+      revisions: submission.revisions || [],
+    });
+  } catch (error) {
+    next(error);
+  }
+};

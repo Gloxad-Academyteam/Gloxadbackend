@@ -43,10 +43,19 @@ const LmsSubmissionSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["submitted", "pending_review", "graded"],
+      enum: ["submitted", "pending_review", "revisions_requested", "graded"],
       default: "pending_review",
       index: true,
     },
+    revisions: [
+      {
+        fileKey: { type: String, default: "" },
+        repoUrl: { type: String, default: "" },
+        comment: { type: String, default: "" },
+        submittedAt: { type: Date, default: Date.now },
+        feedback: { type: String, default: "" },
+      },
+    ],
     grade: {
       score: {
         type: Number,

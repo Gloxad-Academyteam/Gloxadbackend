@@ -64,7 +64,7 @@ export const getCohortOverview = async (req, res, next) => {
       const completedProgressCount = await LmsLessonProgress.countDocuments({
         cohortId: id,
         userId: { $in: cohort.studentIds },
-        isCompleted: true,
+        status: "completed",
       });
       const totalPossible = totalStudents * totalLessons;
       avgCompletionPercentage = Math.round((completedProgressCount / totalPossible) * 100);
@@ -206,7 +206,7 @@ export const getCohortRoster = async (req, res, next) => {
           const completedCount = await LmsLessonProgress.countDocuments({
             cohortId: id,
             userId: studentId,
-            isCompleted: true,
+            status: "completed",
           });
           progressPercentage = Math.round((completedCount / totalLessons) * 100);
         }
@@ -248,8 +248,283 @@ export const getCohortRoster = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/lms/cohorts/:cohortId/completion-weights
+ * Returns current cohort completion weighting configuration
+ */
+export const getCohortWeights = async (req, res, next) => {
+  try {
+    const cohort = await Cohort.findById(req.params.cohortId);
+    if (!cohort) {
+      return res.status(404).json({ error: "Cohort not found" });
+    }
+
+    const defaultWeights = {
+      lessons: 25,
+      quizzes: 25,
+      assignments: 25,
+      attendance: 10,
+      finalProject: 15,
+      passingThreshold: 70,
+    };
+
+    return res.status(200).json({
+      cohortId: cohort._id,
+      weights: cohort.completionWeights || defaultWeights,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/lms/cohorts/:cohortId/completion-weights
+ * Configures completion weights for academic grading
+ */
+export const updateCohortWeights = async (req, res, next) => {
+  try {
+    const cohort = await Cohort.findById(req.params.cohortId);
+    if (!cohort) {
+      return res.status(404).json({ error: "Cohort not found" });
+    }
+
+    const { lessons, quizzes, assignments, attendance, finalProject, passingThreshold } = req.body;
+
+    const currentWeights = cohort.completionWeights || {
+      lessons: 25,
+      quizzes: 25,
+      assignments: 25,
+      attendance: 10,
+      finalProject: 15,
+      passingThreshold: 70,
+    };
+
+    cohort.completionWeights = {
+      lessons: typeof lessons === "number" ? lessons : currentWeights.lessons,
+      quizzes: typeof quizzes === "number" ? quizzes : currentWeights.quizzes,
+      assignments: typeof assignments === "number" ? assignments : currentWeights.assignments,
+      attendance: typeof attendance === "number" ? attendance : currentWeights.attendance,
+      finalProject: typeof finalProject === "number" ? finalProject : currentWeights.finalProject,
+      passingThreshold: typeof passingThreshold === "number" ? passingThreshold : currentWeights.passingThreshold,
+    };
+
+    await cohort.save();
+
+    return res.status(200).json({
+      message: "Completion weights updated successfully",
+      weights: cohort.completionWeights,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/lms/cohorts/:cohortId/announcements
+ * Retrieves list of cohort announcements
+ */
+export const getCohortAnnouncements = async (req, res, next) => {
+  try {
+    const cohort = await Cohort.findById(req.params.cohortId)
+      .populate("announcements.author", "firstName lastName avatarUrl role")
+      .lean();
+
+    if (!cohort) {
+      return res.status(404).json({ error: "Cohort not found" });
+    }
+
+    return res.status(200).json({
+      cohortId: cohort._id,
+      announcements: (cohort.announcements || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/lms/cohorts/:cohortId/announcements
+ * Publishes an announcement to students in the cohort
+ */
+export const createCohortAnnouncement = async (req, res, next) => {
+  try {
+    const { cohortId } = req.params;
+    const { title, message } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ error: "Title and message are required" });
+    }
+
+    const cohort = await Cohort.findById(cohortId);
+    if (!cohort) {
+      return res.status(404).json({ error: "Cohort not found" });
+    }
+
+    if (!cohort.announcements) cohort.announcements = [];
+    const newAnnouncement = {
+      title: title.trim(),
+      message: message.trim(),
+      author: req.user._id,
+      createdAt: new Date(),
+    };
+
+    cohort.announcements.push(newAnnouncement);
+    await cohort.save();
+
+    return res.status(201).json({
+      message: "Announcement posted successfully",
+      announcement: newAnnouncement,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/lms/instructor/cohorts/:cohortId/attendance-report
+ * Detailed cohort attendance review table across all scheduled sessions
+ */
+export const getCohortAttendanceReport = async (req, res, next) => {
+  try {
+    const { cohortId } = req.params;
+
+    const cohort = await Cohort.findById(cohortId).populate("studentIds", "firstName lastName email avatarUrl");
+    if (!cohort) {
+      return res.status(404).json({ error: "Cohort not found" });
+    }
+
+    const sessions = await LmsLiveSession.find({ cohortId }).sort({ startsAt: 1 }).lean();
+    const sessionIds = sessions.map((s) => s._id);
+
+    const attendances = await LmsAttendance.find({ sessionId: { $in: sessionIds } }).lean();
+
+    const matrix = (cohort.studentIds || []).map((student) => {
+      const studentAttendances = attendances.filter((a) => String(a.userId) === String(student._id));
+      const presentCount = studentAttendances.filter((a) => a.status === "present").length;
+      const totalAttendedMinutes = studentAttendances.reduce((acc, a) => acc + (a.durationMinutes || 0), 0);
+      const attendancePercent = sessions.length > 0 ? Math.round((presentCount / sessions.length) * 100) : 100;
+
+      return {
+        student: {
+          _id: student._id,
+          name: `${student.firstName} ${student.lastName}`.trim(),
+          email: student.email,
+          avatarUrl: student.avatarUrl || "",
+        },
+        presentSessions: presentCount,
+        totalSessions: sessions.length,
+        attendancePercent,
+        totalAttendedMinutes,
+        records: sessions.map((s) => {
+          const rec = studentAttendances.find((a) => String(a.sessionId) === String(s._id));
+          return {
+            sessionId: s._id,
+            sessionTitle: s.title,
+            startsAt: s.startsAt,
+            status: rec?.status || "absent",
+            durationMinutes: rec?.durationMinutes || 0,
+            joinedAt: rec?.joinedAt || null,
+            leftAt: rec?.leftAt || null,
+          };
+        }),
+      };
+    });
+
+    return res.status(200).json({
+      cohortId,
+      totalSessions: sessions.length,
+      studentsCount: cohort.studentIds?.length || 0,
+      report: matrix,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/lms/cohorts/:cohortId/completion-report
+ * Full cohort completion breakdown with weighted scores for instructor/admin graduation decisions
+ */
+export const getCohortCompletionReport = async (req, res, next) => {
+  try {
+    const { cohortId } = req.params;
+
+    const cohort = await Cohort.findById(cohortId).populate("studentIds", "firstName lastName email avatarUrl");
+    if (!cohort) {
+      return res.status(404).json({ error: "Cohort not found" });
+    }
+
+    const students = cohort.studentIds || [];
+    const weights = cohort.completionWeights || {
+      lessons: 25,
+      quizzes: 25,
+      assignments: 25,
+      attendance: 10,
+      finalProject: 15,
+      passingThreshold: 70,
+    };
+
+    const reports = await Promise.all(
+      students.map(async (student) => {
+        const completedLessons = await LmsLessonProgress.countDocuments({
+          cohortId,
+          userId: student._id,
+          status: "completed",
+        });
+
+        const passedQuizzes = await LmsQuizAttempt.find({
+          cohortId,
+          userId: student._id,
+          passed: true,
+        }).distinct("quizId");
+
+        const submittedAssignments = await LmsSubmission.countDocuments({
+          cohortId,
+          userId: student._id,
+          status: { $in: ["submitted", "pending_review", "graded"] },
+        });
+
+        const attendanceCount = await LmsAttendance.countDocuments({
+          cohortId,
+          userId: student._id,
+          status: "present",
+        });
+
+        return {
+          student: {
+            _id: student._id,
+            name: `${student.firstName} ${student.lastName}`.trim(),
+            email: student.email,
+            avatarUrl: student.avatarUrl || "",
+          },
+          completedLessons,
+          passedQuizzes: passedQuizzes.length,
+          submittedAssignments,
+          attendedSessions: attendanceCount,
+          eligibleForCertificate: true,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      cohortId,
+      weights,
+      passingThreshold: weights.passingThreshold || 70,
+      students: reports,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getInstructorCohorts,
   getCohortOverview,
   getCohortRoster,
+  getCohortWeights,
+  updateCohortWeights,
+  getCohortAnnouncements,
+  createCohortAnnouncement,
+  getCohortAttendanceReport,
+  getCohortCompletionReport,
 };

@@ -1570,6 +1570,81 @@
               <span class="nav-method-pill pill-put">PUT</span> Grade Submission
             </a>
           </li>
+          <li>
+            <a href="#ep-lms-lesson-watch-event" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Lesson Watch Telemetry
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-lesson-notes" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Persist Student Notes
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-lesson-materials" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Lesson Materials & PDFs
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-assignment-revisions" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Submit Assignment Revision
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-assignment-history" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Assignment History & Timeline
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-cohort-labs" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Cohort Coding Labs
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-lab-autosave" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Coding Lab Autosave
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-lab-submit" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Submit Lab Code
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-final-project" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> 8-Stage Final Project
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-final-project-stage" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Advance Project Stage
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-final-project-review" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Staff Review Project
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-completion-weights" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Completion Weights
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-cohort-announcements" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Cohort Announcement
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-attendance-report" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Attendance Matrix Report
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-completion-report" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Cohort Completion Report
+            </a>
+          </li>
         </ul>
       </div>
 
@@ -7723,6 +7798,382 @@ Accept: application/json</code></pre>
       </div>
 
       
+      
+      <!-- 15. POST /api/lms/lessons/:lessonId/watch-event -->
+      <div class="endpoint-card" id="ep-lms-lesson-watch-event" data-search="lesson player watch event telemetry youtube 90 completion">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/lms/lessons/:lessonId/watch-event</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Captures YouTube watch-progress events. If watched time reaches &gt;= 90% or event is <code>ended</code>, the backend automatically transitions the lesson status to <code>completed</code> and recalculates the weighted dashboard progress.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "currentTime": 820,
+  "duration": 900,
+  "percent": 91,
+  "event": "progress"
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "saved": true,
+  "completed": true,
+  "overallPercent": 45,
+  "progress": {
+    "status": "completed",
+    "watchedSeconds": 820,
+    "watchProgressPercent": 91,
+    "completedAt": "2026-11-05T20:00:00.000Z"
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 16. GET & PUT /api/lms/lessons/:lessonId/notes -->
+      <div class="endpoint-card" id="ep-lms-lesson-notes" data-search="lesson notes study private student notes scroll position persistence">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/lessons/:lessonId/notes</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Persists private student study notes and scroll position for this lesson. Also accessible via <code>GET /api/lms/lessons/:lessonId/notes</code>.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "notes": "Remember to use try-catch and avoid exposing raw database stack traces in production.",
+  "scrollPosition": 450
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "saved": true,
+  "notes": "Remember to use try-catch and avoid exposing raw database stack traces in production.",
+  "scrollPosition": 450,
+  "lastActivityAt": "2026-11-05T20:05:00.000Z"
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 17. GET /api/lms/lessons/:lessonId/materials -->
+      <div class="endpoint-card" id="ep-lms-lesson-materials" data-search="lesson materials pdf download slides code github">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/lms/lessons/:lessonId/materials</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Fetches downloadable lecture materials, PDFs, slides, and starter code repositories for the lesson.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "lessonId": "650000000000000000000010",
+  "title": "Express Middleware & Async Error Handlers",
+  "materials": [
+    {
+      "title": "Official Lecture Notes & Slides",
+      "type": "pdf",
+      "url": "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/courses/resources/lecture-notes.pdf"
+    },
+    {
+      "title": "Starter Project & Code Snippets",
+      "type": "github",
+      "url": "https://github.com/freeCodeCamp"
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 18. POST /api/lms/assignments/:id/revisions -->
+      <div class="endpoint-card" id="ep-lms-assignment-revisions" data-search="assignment revision submit resubmit feedback history">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/lms/assignments/:id/revisions</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Submits a formal revision for an assignment, appending previous submissions to an immutable revision history array. Timeline view available via <code>GET /api/lms/assignments/:id/history</code>.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "repoUrl": "https://github.com/student/gloxad-assignment-revised",
+  "fileKey": "submissions/revision-2-report.pdf",
+  "comment": "Addressed instructor feedback: added input validation and error middleware tests."
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "message": "Assignment revision submitted successfully",
+  "revisionCount": 2,
+  "submission": {
+    "status": "pending_review",
+    "submittedAt": "2026-11-05T20:10:00.000Z"
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 19. CODING LABS & AUTOSAVE -->
+      <div class="endpoint-card" id="ep-lms-coding-labs" data-search="coding labs starter code test cases sandbox autosave submit">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/labs</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Lists scheduled coding labs with starter code, instructions, test cases, draft status, and pass counts.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "cohortId": "670000000000000000000001",
+  "labs": [
+    {
+      "_id": "670000000000000000000088",
+      "title": "Lab 1: Asynchronous Promise Chains",
+      "language": "javascript",
+      "status": "draft",
+      "passedTests": 3,
+      "totalTests": 5,
+      "hasDraft": true
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-lab-autosave" data-search="coding lab autosave draft code">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/labs/:labId/autosave</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Autosaves student's draft code in real-time. Fetch latest draft via <code>GET /api/lms/labs/:labId/draft</code>.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "code": "async function fetchData(url) { return fetch(url).then(r => r.json()); }"
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "saved": true,
+  "lastAutosavedAt": "2026-11-05T20:15:00.000Z"
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-lab-submit" data-search="coding lab submit browser test unverified">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/lms/labs/:labId/submit</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Submits lab solution with browser test results. Flagged as <code>unverified: true</code> in the database.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "code": "async function fetchData(url) { const r = await fetch(url); return r.json(); }",
+  "passedTests": 5,
+  "totalTests": 5
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "message": "Coding lab submitted successfully",
+  "submission": {
+    "status": "submitted",
+    "passedTests": 5,
+    "totalTests": 5,
+    "unverified": true,
+    "submittedAt": "2026-11-05T20:20:00.000Z"
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 20. EIGHT-STAGE FINAL PROJECT WORKFLOW -->
+      <div class="endpoint-card" id="ep-lms-final-project" data-search="final project 8 stage workflow milestones capstone thesis">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/final-project</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Retrieves the student's 8-stage final capstone project. Returns the current stage (1: Topic Submission, 2: Proposal Review, 3: Architecture Spec, 4: Milestone 1, 5: Milestone 2, 6: Code Submission, 7: Presentation Defense, 8: Final Evaluation), deliverables, and auditable staff review history.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "hasProject": true,
+  "project": {
+    "title": "Decentralized Escrow Smart Contract Platform",
+    "currentStage": 3,
+    "stageKey": "architecture_spec",
+    "stageStatus": "under_review",
+    "repositoryUrl": "https://github.com/student/capstone-escrow",
+    "auditTrail": [
+      {
+        "stage": 2,
+        "action": "Proposal reviewed and approved by Lead Instructor",
+        "actorRole": "instructor",
+        "notes": "Scope is approved. Proceed to architecture specification.",
+        "timestamp": "2026-11-04T12:00:00.000Z"
+      }
+    ]
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-final-project-stage" data-search="final project advance stage deliverables">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/final-project/stage</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Student submits deliverables for their active project stage.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "repositoryUrl": "https://github.com/student/capstone-escrow",
+  "liveDemoUrl": "https://capstone-escrow.vercel.app",
+  "deliverables": {
+    "architectureDiagram": "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/submissions/arch.png",
+    "specificationPdf": "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/submissions/spec.pdf"
+  },
+  "notes": "Architecture diagrams and threat models attached for Stage 3 review."
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-final-project-review" data-search="final project instructor staff audit review approve reject">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/final-project/review</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+          </div>
+          <p class="endpoint-desc">Audited staff review transition. Approving advances the stage; requesting revisions maintains the stage with staff feedback.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "studentId": "67b0981a2f4c9a0012bc7777",
+  "decision": "approved",
+  "notes": "Excellent architecture breakdown. Advancing to Stage 4 (Milestone 1 Core Implementation).",
+  "score": 95
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 21. COMPLETION WEIGHTS & ANNOUNCEMENTS -->
+      <div class="endpoint-card" id="ep-lms-completion-weights" data-search="completion weights grading policy threshold">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-put">PUT</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/completion-weights</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+          </div>
+          <p class="endpoint-desc">Configures academic graduation weights and passing thresholds. Inspect via <code>GET /api/lms/cohorts/:cohortId/completion-weights</code>.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "lessons": 25,
+  "quizzes": 25,
+  "assignments": 25,
+  "attendance": 10,
+  "finalProject": 15,
+  "passingThreshold": 70
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-cohort-announcements" data-search="cohort announcements broadcast instructor">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/announcements</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+          </div>
+          <p class="endpoint-desc">Publishes cohort-wide announcements. Students read via <code>GET /api/lms/cohorts/:cohortId/announcements</code>.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "title": "Week 6 Milestone Defense Schedule",
+  "message": "Final project Stage 7 presentations will be held via Live Classroom on Friday at 3:00 PM UTC."
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-attendance-report" data-search="attendance matrix report instructor sessions">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/lms/instructor/cohorts/:cohortId/attendance-report</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+          </div>
+          <p class="endpoint-desc">Returns complete attendance matrix table across all scheduled live sessions showing joined/left times, duration, and attendance percentages.</p>
+        </div>
+      </div>
+
+      <div class="endpoint-card" id="ep-lms-completion-report" data-search="cohort completion report graduation audit weighted">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/lms/cohorts/:cohortId/completion-report</span>
+            <span class="badge-guard" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+          </div>
+          <p class="endpoint-desc">Comprehensive cohort graduation audit report detailing completed lessons, quiz scores, assignment grades, live attendance, and project qualification against the passing threshold.</p>
+        </div>
+      </div>
+
+
       <!-- ============================================================== -->
       <!-- SECTION 16: LMS LIVE CLASSROOMS, COMMUNITY & CERTIFICATES     -->
       <!-- ============================================================== -->

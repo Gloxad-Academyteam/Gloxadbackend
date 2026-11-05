@@ -13,6 +13,10 @@ import {
   getCohortCurriculum,
   getLessonDetail,
   updateLessonProgress,
+  recordWatchEvent,
+  getLessonNotes,
+  saveLessonNotes,
+  getLessonMaterials,
   getComments,
   createComment,
   replyComment,
@@ -29,9 +33,25 @@ import {
   listAssignments,
   getAssignment,
   submitAssignment,
+  submitAssignmentRevision,
+  getAssignmentSubmissionHistory,
   getGradingQueue,
   gradeSubmission,
 } from "../controllers/lmsAssignment.controller.js";
+import {
+  getCohortLabs,
+  getLabDetail,
+  autosaveLabCode,
+  getLabDraft,
+  submitLab,
+} from "../controllers/lmsLab.controller.js";
+import {
+  getStudentFinalProject,
+  createFinalProject,
+  advanceFinalProjectStage,
+  reviewFinalProjectStage,
+  getInstructorFinalProjects,
+} from "../controllers/lmsFinalProject.controller.js";
 
 // Unit 20 Controllers
 import {
@@ -57,6 +77,7 @@ import {
   createPostReply,
   deletePost,
   reportPost,
+  moderatePost,
 } from "../controllers/lmsCommunity.controller.js";
 import {
   getMyCertificates,
@@ -69,6 +90,12 @@ import {
   getInstructorCohorts,
   getCohortOverview,
   getCohortRoster,
+  getCohortWeights,
+  updateCohortWeights,
+  getCohortAnnouncements,
+  createCohortAnnouncement,
+  getCohortAttendanceReport,
+  getCohortCompletionReport,
 } from "../controllers/lmsInstructor.controller.js";
 import {
   getAdminAnalytics,
@@ -89,6 +116,10 @@ router.get("/dashboard/student", authGuard, cohortGuard, getStudentDashboard);
 router.get("/cohorts/:cohortId/curriculum", authGuard, cohortGuard, getCohortCurriculum);
 router.get("/lessons/:lessonId", authGuard, cohortGuard, getLessonDetail);
 router.put("/lessons/:lessonId/progress", authGuard, cohortGuard, updateLessonProgress);
+router.post("/lessons/:lessonId/watch-event", authGuard, cohortGuard, recordWatchEvent);
+router.get("/lessons/:lessonId/notes", authGuard, cohortGuard, getLessonNotes);
+router.put("/lessons/:lessonId/notes", authGuard, cohortGuard, saveLessonNotes);
+router.get("/lessons/:lessonId/materials", authGuard, cohortGuard, getLessonMaterials);
 
 // 3. Threaded Lesson Discussions & Likes
 router.get("/lessons/:lessonId/comments", authGuard, cohortGuard, getComments);
@@ -107,8 +138,32 @@ router.post("/quiz-attempts/:attemptId/submit", authGuard, cohortGuard, submitQu
 router.get("/assignments", authGuard, cohortGuard, listAssignments);
 router.get("/assignments/:id", authGuard, cohortGuard, getAssignment);
 router.post("/assignments/:id/submissions", authGuard, cohortGuard, submitAssignment);
+router.post("/assignments/:id/revisions", authGuard, cohortGuard, submitAssignmentRevision);
+router.get("/assignments/:id/history", authGuard, cohortGuard, getAssignmentSubmissionHistory);
 router.get("/instructor/grading-queue", authGuard, cohortGuard, getGradingQueue);
 router.put("/submissions/:id/grade", authGuard, cohortGuard, gradeSubmission);
+
+// 6. Coding Labs & Autosave Engine
+router.get("/cohorts/:cohortId/labs", authGuard, cohortGuard, getCohortLabs);
+router.get("/labs/:labId", authGuard, getLabDetail);
+router.put("/labs/:labId/autosave", authGuard, autosaveLabCode);
+router.get("/labs/:labId/draft", authGuard, getLabDraft);
+router.post("/labs/:labId/submit", authGuard, submitLab);
+
+// 7. Eight-Stage Final-Project Workflow
+router.get("/cohorts/:cohortId/final-project", authGuard, cohortGuard, getStudentFinalProject);
+router.post("/cohorts/:cohortId/final-project", authGuard, cohortGuard, createFinalProject);
+router.put("/cohorts/:cohortId/final-project/stage", authGuard, cohortGuard, advanceFinalProjectStage);
+router.put("/cohorts/:cohortId/final-project/review", authGuard, roleGuard("instructor"), reviewFinalProjectStage);
+router.get("/instructor/cohorts/:cohortId/final-projects", authGuard, roleGuard("instructor"), getInstructorFinalProjects);
+
+// 8. Cohort Configuration, Announcements & Reports
+router.get("/cohorts/:cohortId/completion-weights", authGuard, getCohortWeights);
+router.put("/cohorts/:cohortId/completion-weights", authGuard, roleGuard("instructor"), updateCohortWeights);
+router.get("/cohorts/:cohortId/announcements", authGuard, getCohortAnnouncements);
+router.post("/cohorts/:cohortId/announcements", authGuard, roleGuard("instructor"), createCohortAnnouncement);
+router.get("/instructor/cohorts/:cohortId/attendance-report", authGuard, roleGuard("instructor"), getCohortAttendanceReport);
+router.get("/cohorts/:cohortId/completion-report", authGuard, roleGuard("instructor"), getCohortCompletionReport);
 
 // ==========================================
 // Unit 20: LMS Live Classrooms & WebRTC
@@ -137,6 +192,7 @@ router.get("/posts/:id/replies", authGuard, getPostReplies);
 router.post("/posts/:id/replies", authGuard, forumPostLimiter, createPostReply);
 router.delete("/posts/:id", authGuard, deletePost);
 router.post("/posts/:id/report", authGuard, reportPost);
+router.put("/posts/:id/moderate", authGuard, roleGuard("instructor"), moderatePost);
 
 // ==========================================
 // Unit 20: Certificates Engine

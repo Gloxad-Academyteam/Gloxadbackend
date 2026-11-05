@@ -380,6 +380,45 @@ export const reportPost = async (req, res, next) => {
   }
 };
 
+/**
+ * PUT /api/lms/posts/:id/moderate
+ * Instructor/admin post moderation: pin, unpin, hide, or lock
+ */
+export const moderatePost = async (req, res, next) => {
+  try {
+    const { action } = req.body;
+    const post = await LmsPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    if (action === "pin") {
+      post.isPinned = true;
+    } else if (action === "unpin") {
+      post.isPinned = false;
+    } else if (action === "hide") {
+      post.isDeleted = true;
+    } else if (action === "unhide") {
+      post.isDeleted = false;
+    } else if (action === "lock") {
+      post.isLocked = true;
+    } else if (action === "unlock") {
+      post.isLocked = false;
+    } else {
+      return res.status(400).json({ error: "Invalid action. Supported: pin, unpin, hide, unhide, lock, unlock" });
+    }
+
+    await post.save();
+
+    return res.status(200).json({
+      message: `Post moderation action executed: ${action}`,
+      post,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getChannels,
   getPosts,
@@ -390,4 +429,5 @@ export default {
   createPostReply,
   deletePost,
   reportPost,
+  moderatePost,
 };
