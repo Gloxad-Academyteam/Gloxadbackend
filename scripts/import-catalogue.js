@@ -202,6 +202,14 @@ async function importCatalogue() {
         slug: item.categorySlug || slugify(item.category),
       };
 
+      const sourceObj = {
+        platform: "youtube",
+        creatorName: "freeCodeCamp.org",
+        creatorAvatar: "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
+        channelUrl: "https://www.youtube.com/@freecodecamp",
+        url: item.trailerVideoUrl || "",
+      };
+
       if (!existing) {
         await Course.create({
           title: item.title,
@@ -213,6 +221,7 @@ async function importCatalogue() {
           language: item.language || "English",
           level: item.level || "beginner",
           courseType: "free",
+          source: sourceObj,
           enrollmentOpen: true,
           price: 0,
           discountPrice: 0,
@@ -240,6 +249,7 @@ async function importCatalogue() {
         existing.description = item.description;
         existing.status = "published";
         existing.enrollmentOpen = true;
+        existing.source = sourceObj;
         if (existing.price === 0) {
           existing.courseType = "free";
         }

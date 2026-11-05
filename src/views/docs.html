@@ -2951,6 +2951,18 @@ Accept: application/json</code></pre>
                   <td><span class="tag-opt">Optional</span></td>
                   <td>Page number (default: <code>1</code>) and limit per page (default: <code>10</code>, max: <code>50</code>)</td>
                 </tr>
+                <tr>
+                  <td><code>platform</code> / <code>isYouTube</code></td>
+                  <td>string</td>
+                  <td><span class="tag-opt">Optional</span></td>
+                  <td>Filter by video platform (e.g. <code>youtube</code>) or pass <code>isYouTube=true</code>. Filter executes strictly before pagination.</td>
+                </tr>
+                <tr>
+                  <td><code>excludeEnrolled</code></td>
+                  <td>boolean</td>
+                  <td><span class="tag-opt">Optional</span></td>
+                  <td>When authenticated, pass <code>true</code> to exclude courses the student is already enrolled in.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -3005,6 +3017,78 @@ Accept: application/json</code></pre>
     "hasNextPage": true,
     "hasPrevPage": false
   }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 16b. GET /api/courses/free-youtube -->
+      <div class="endpoint-card" id="ep-courses-free-youtube" data-search="courses free youtube discovery recommendation my learning get">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-uri">/api/courses/free-youtube</span>
+          <span class="endpoint-tag-pill tag-public">Public / Optional Auth</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Returns up to 6 free YouTube courses for student dashboard "Free Courses Available" discovery. If user is authenticated via Bearer token, courses the student is already enrolled in are automatically excluded.
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Query Parameter</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>limit</code></td>
+                  <td>number</td>
+                  <td><span class="tag-opt">Optional</span></td>
+                  <td>Number of courses to return (default: <code>6</code>, max: <code>20</code>)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="code-grid">
+            <div class="code-block">
+              <div class="code-header">
+                <span>Request Example</span>
+                <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+              </div>
+              <pre><code>GET /api/courses/free-youtube?limit=6 HTTP/1.1
+Host: localhost:3001
+Authorization: Bearer &lt;jwt_token_optional&gt;
+Accept: application/json</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header">
+                <span>Response <span class="code-status-pill status-badge-200">200 OK</span></span>
+                <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+              </div>
+              <pre><code>{
+  "courses": [
+    {
+      "_id": "64fa01e4a1b2c3d4e5f67890",
+      "title": "Modern JavaScript: ES6+ from Scratch",
+      "slug": "modern-javascript-es6-from-scratch",
+      "courseType": "free",
+      "source": {
+        "platform": "youtube",
+        "creatorName": "freeCodeCamp.org",
+        "creatorAvatar": "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
+        "channelUrl": "https://www.youtube.com/@freecodecamp"
+      },
+      "category": { "_id": null, "name": "Software Development", "slug": "software-development" }
+    }
+  ],
+  "count": 1
 }</code></pre>
             </div>
           </div>
@@ -7786,7 +7870,7 @@ Accept: application/json</code></pre>
             <span class="endpoint-path">/api/lms/live-sessions/:id/join</span>
             <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
           </div>
-          <p class="endpoint-desc">Generates cryptographic LiveKit WebRTC credentials (<code>roomToken</code>, <code>serverUrl</code>) with role-mapped grants (<code>host</code> for instructor, <code>viewer</code> for students) and records attendance.</p>
+          <p class="endpoint-desc">Generates cryptographic LiveKit WebRTC credentials (<code>roomToken</code>, <code>serverUrl</code>) with role-mapped grants (<code>host</code> for instructor, <code>viewer</code> for students) and records attendance. Enforces a <strong>10-minute pre-session join window</strong> for students.</p>
         </div>
         <div class="endpoint-body">
           <div class="code-block">
@@ -7797,6 +7881,32 @@ Accept: application/json</code></pre>
   "roomToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "roomName": "cohort-alpha-session-1",
   "role": "viewer"
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5b. POST /api/lms/live-sessions/:id/leave -->
+      <div class="endpoint-card" id="ep-lms-live-sessions-leave" data-search="live session leave exit attendance duration">
+        <div class="endpoint-header">
+          <div class="endpoint-title-row">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/lms/live-sessions/:id/leave</span>
+            <span class="badge-guard" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Auth</span>
+          </div>
+          <p class="endpoint-desc">Records attendee departure timestamp (<code>leftAt</code>) and calculates attended <code>durationMinutes</code> on the attendance record.</p>
+        </div>
+        <div class="endpoint-body">
+          <div class="code-block">
+            <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+            <pre><code>{
+  "message": "Leave recorded successfully",
+  "attendance": {
+    "sessionId": "670000000000000000000101",
+    "joinedAt": "2026-11-05T10:00:00.000Z",
+    "leftAt": "2026-11-05T10:55:00.000Z",
+    "durationMinutes": 55
+  }
 }</code></pre>
           </div>
         </div>

@@ -185,12 +185,16 @@ export const getLessonDetail = async (req, res, next) => {
       notes:
         targetLesson.notes ||
         "Comprehensive study notes covering the principles and execution of this lesson.",
+      studentNotes: progress?.notes || "",
+      scrollPosition: progress?.scrollPosition || 0,
+      lastActivityAt: progress?.lastActivityAt || null,
       objectives:
         targetLesson.objectives?.length > 0
           ? targetLesson.objectives
           : [`Master fundamental concepts of ${targetLesson.title}`],
       attachments: targetLesson.attachments || [],
-      progressPercent,
+      progressPercent: progress?.watchProgressPercent !== undefined ? progress.watchProgressPercent : progressPercent,
+      completed: progress?.status === "completed",
       next: nextItem
         ? { _id: nextItem.lesson._id, title: nextItem.lesson.title }
         : null,
@@ -203,34 +207,78 @@ export const getLessonDetail = async (req, res, next) => {
 
 /**
  * PUT /api/lms/lessons/:lessonId/progress
- * Idempotently updates watched time and completed objectives, recalculating dashboard percentage
+ * Idempotently updates watched time and completed objectives, recalculating dashboard percentage.
+ * Automatically enforces the 90% YouTube watch-completion rule and persists scroll/notes.
  */
 export const updateLessonProgress = async (req, res, next) => {
   try {
     const cohort = req.cohort;
     const userId = req.user._id;
     const { lessonId } = req.params;
-    const { watchedSeconds, completed, objectivesDone } = req.body;
+    const {
+      watchedSeconds,
+      watchProgressPercent,
+      completed,
+      objectivesDone,
+      scrollPosition,
+      notes,
+    } = req.body;
 
     const course = await Course.findById(cohort.courseId);
     let moduleId = null;
+    let targetLesson = null;
     course?.modules?.forEach((mod) => {
-      if (mod.lessons?.some((l) => String(l._id) === String(lessonId))) {
-        moduleId = mod._id;
-      }
+      (mod.lessons || []).forEach((l) => {
+        if (String(l._id) === String(lessonId)) {
+          moduleId = mod._id;
+          targetLesson = l;
+        }
+      });
     });
 
-    const updateFields = {};
+    let durationSec = 900;
+    if (targetLesson?.duration && typeof targetLesson.duration === "string") {
+      const parts = targetLesson.duration.split(":").map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        durationSec = parts[0] * 60 + parts[1];
+      }
+    }
+
+    const updateFields = {
+      lastActivityAt: new Date(),
+    };
+
     if (typeof watchedSeconds === "number") {
-      updateFields.watchedSeconds = watchedSeconds;
+      updateFields.watchedSeconds = Math.max(0, watchedSeconds);
+    }
+
+    let calculatedPercent = typeof watchProgressPercent === "number" ? watchProgressPercent : null;
+    if (calculatedPercent === null && typeof watchedSeconds === "number" && durationSec > 0) {
+      calculatedPercent = Math.min(100, Math.round((watchedSeconds / durationSec) * 100));
+    }
+    if (calculatedPercent !== null) {
+      updateFields.watchProgressPercent = Math.max(0, Math.min(100, calculatedPercent));
+    }
+
+    if (typeof scrollPosition === "number") {
+      updateFields.scrollPosition = Math.max(0, scrollPosition);
+    }
+    if (typeof notes === "string") {
+      updateFields.notes = notes;
     }
     if (Array.isArray(objectivesDone)) {
       updateFields.objectivesDone = objectivesDone;
     }
-    if (completed === true) {
+
+    // 90% completion rule: if watchProgress >= 90 or completed === true, mark completed
+    const meets90PercentRule =
+      (calculatedPercent !== null && calculatedPercent >= 90) ||
+      (typeof watchedSeconds === "number" && durationSec > 0 && (watchedSeconds / durationSec) >= 0.9);
+
+    if (completed === true || meets90PercentRule) {
       updateFields.status = "completed";
       updateFields.completedAt = new Date();
-    } else if (watchedSeconds > 0) {
+    } else if (watchedSeconds > 0 || (calculatedPercent && calculatedPercent > 0)) {
       updateFields.status = "in_progress";
     }
 

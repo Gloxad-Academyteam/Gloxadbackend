@@ -32,6 +32,24 @@ const LmsLessonProgressSchema = new Schema(
       type: Number,
       default: 0,
     },
+    watchProgressPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    scrollPosition: {
+      type: Number,
+      default: 0,
+    },
+    lastActivityAt: {
+      type: Date,
+      default: Date.now,
+    },
+    notes: {
+      type: String,
+      default: "",
+    },
     objectivesDone: [
       {
         type: String,

@@ -201,13 +201,11 @@ export const answerQuestion = async (req, res, next) => {
       }
       await attempt.save();
 
+      // Rule 3: Do not reveal answer keys/explanations during in-progress attempt.
+      // Reveal only upon final submission.
       return res.status(200).json({
         saved: true,
-        correct: isCorrect,
-        correctOptionId: String(question.correctOptionIndex),
-        explanation:
-          question.explanation ||
-          "Correct answer evaluated from curriculum syllabus.",
+        locked: true,
       });
     }
 
@@ -296,6 +294,21 @@ export const submitQuizAttempt = async (req, res, next) => {
     });
     const bestScore = Math.max(...allAttempts.map((a) => a.score || 0));
 
+    const results = (quiz.questions || []).map((q) => {
+      const userAns = attempt.answers.find(
+        (a) => String(a.questionId) === String(q._id)
+      );
+      return {
+        questionId: q._id,
+        questionText: q.questionText,
+        options: q.options,
+        selectedOptionId: userAns ? userAns.optionId : null,
+        correctOptionIndex: q.correctOptionIndex,
+        isCorrect: userAns ? userAns.isCorrect : false,
+        explanation: q.explanation || "Evaluated from curriculum syllabus.",
+      };
+    });
+
     res.status(200).json({
       status,
       score,
@@ -303,6 +316,7 @@ export const submitQuizAttempt = async (req, res, next) => {
       percent,
       passed,
       bestScore,
+      results,
     });
   } catch (error) {
     next(error);

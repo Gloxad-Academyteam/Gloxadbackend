@@ -212,6 +212,25 @@ export const joinLiveSession = async (req, res, next) => {
     const role = isInstructor || isAdmin ? "host" : "viewer";
     const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || "User";
 
+    const now = new Date();
+    const startsAtMs = new Date(session.startsAt).getTime();
+    const endsAtMs = new Date(session.endsAt).getTime();
+    const tenMinutesBeforeMs = startsAtMs - 10 * 60 * 1000;
+
+    // For students, enforce the 10-minute join window
+    if (!isInstructor && !isAdmin) {
+      if (now.getTime() < tenMinutesBeforeMs) {
+        return res.status(400).json({
+          error: "Live classroom join opens 10 minutes prior to session start",
+        });
+      }
+      if (now.getTime() > endsAtMs && session.status === "ended") {
+        return res.status(400).json({
+          error: "This live session has already ended",
+        });
+      }
+    }
+
     // Generate cryptographic LiveKit room credentials
     const credentials = await generateLiveKitCredentials({
       roomName: session.roomName,
@@ -226,7 +245,6 @@ export const joinLiveSession = async (req, res, next) => {
       userId: req.user._id,
     });
 
-    const now = new Date();
     if (!attendance) {
       await LmsAttendance.create({
         sessionId: session._id,
@@ -516,12 +534,55 @@ export const updateSessionAttendance = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/lms/live-sessions/:id/leave
+ * Updates attendee departure time and calculates attendance duration in minutes
+ */
+export const leaveLiveSession = async (req, res, next) => {
+  try {
+    const session = await LmsLiveSession.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: "Live session not found" });
+    }
+
+    const attendance = await LmsAttendance.findOne({
+      sessionId: session._id,
+      userId: req.user._id,
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ error: "No active attendance record found for this session" });
+    }
+
+    const now = new Date();
+    attendance.leftAt = now;
+    if (attendance.joinedAt) {
+      const durationMs = now.getTime() - new Date(attendance.joinedAt).getTime();
+      attendance.durationMinutes = Math.max(1, Math.round(durationMs / 60000));
+    }
+    await attendance.save();
+
+    return res.status(200).json({
+      message: "Leave recorded successfully",
+      attendance: {
+        sessionId: attendance.sessionId,
+        joinedAt: attendance.joinedAt,
+        leftAt: attendance.leftAt,
+        durationMinutes: attendance.durationMinutes,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getLiveSessions,
   createLiveSession,
   updateLiveSession,
   deleteLiveSession,
   joinLiveSession,
+  leaveLiveSession,
   getSessionChatHistory,
   createSessionPoll,
   votePoll,

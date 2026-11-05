@@ -40,6 +40,7 @@ import {
   updateLiveSession,
   deleteLiveSession,
   joinLiveSession,
+  leaveLiveSession,
   getSessionChatHistory,
   createSessionPoll,
   votePoll,
@@ -117,6 +118,7 @@ router.post("/live-sessions", authGuard, roleGuard("instructor"), createLiveSess
 router.put("/live-sessions/:id", authGuard, roleGuard("instructor"), updateLiveSession);
 router.delete("/live-sessions/:id", authGuard, roleGuard("instructor"), deleteLiveSession);
 router.post("/live-sessions/:id/join", authGuard, joinLiveSession);
+router.post("/live-sessions/:id/leave", authGuard, leaveLiveSession);
 router.get("/live-sessions/:id/chat", authGuard, getSessionChatHistory);
 router.post("/live-sessions/:id/polls", authGuard, roleGuard("instructor"), createSessionPoll);
 router.post("/polls/:pollId/votes", authGuard, votePoll);

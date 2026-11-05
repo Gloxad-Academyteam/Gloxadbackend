@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getCourses,
+  getFreeYouTubeCourses,
   getCourseBySlugOrId,
   createCourseReviewController,
   getCourseReviewsController
@@ -10,7 +11,8 @@ import { optionalAuthMiddleware } from "../middlewares/optionalAuth.middleware.j
 
 const router = Router();
 
-router.get("/courses", getCourses);
+router.get("/courses", optionalAuthMiddleware, getCourses);
+router.get("/courses/free-youtube", optionalAuthMiddleware, getFreeYouTubeCourses);
 router.get("/courses/:id/reviews", optionalAuthMiddleware, getCourseReviewsController);
 router.post("/courses/:id/reviews", authGuard, createCourseReviewController);
 router.get("/courses/:slugOrId", optionalAuthMiddleware, getCourseBySlugOrId);

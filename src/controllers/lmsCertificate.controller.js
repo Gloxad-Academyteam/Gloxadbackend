@@ -64,7 +64,8 @@ export const getMyCertificates = async (req, res, next) => {
     const inProgressList = await Promise.all(
       enrolledCohorts.map(async (cohort) => {
         // Calculate progress percentage
-        const totalLessons = (cohort.curriculumModules || []).reduce(
+        const courseModules = cohort.courseId?.modules || cohort.curriculumModules || [];
+        const totalLessons = courseModules.reduce(
           (acc, m) => acc + (m.lessons || []).length,
           0
         );
@@ -74,7 +75,7 @@ export const getMyCertificates = async (req, res, next) => {
           const completedCount = await LmsLessonProgress.countDocuments({
             cohortId: cohort._id,
             userId,
-            isCompleted: true,
+            status: "completed",
           });
           progressPercentage = Math.min(100, Math.round((completedCount / totalLessons) * 100));
         }

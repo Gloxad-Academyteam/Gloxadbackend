@@ -69,6 +69,22 @@ const courseSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    source: {
+      platform: {
+        type: String,
+        enum: ["youtube", "s3", "external", "vimeo"],
+        default: "youtube",
+        index: true
+      },
+      creatorName: { type: String, default: "freeCodeCamp.org", trim: true },
+      creatorAvatar: {
+        type: String,
+        default: "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
+        trim: true
+      },
+      channelUrl: { type: String, default: "https://www.youtube.com/@freecodecamp", trim: true },
+      url: { type: String, default: "", trim: true }
+    },
     enrollmentOpen: {
       type: Boolean,
       default: true,

@@ -75,7 +75,12 @@ export const getCourses = async (req, res, next) => {
       maxPrice,
       sort = "newest",
       page = 1,
-      limit = 10
+      limit = 10,
+      platform,
+      source,
+      isYouTube,
+      isFree,
+      excludeEnrolled
     } = req.query;
 
     const query = { status: "published" };
@@ -102,11 +107,32 @@ export const getCourses = async (req, res, next) => {
     }
 
     // Enum filters
-    if (courseType && ["free", "paid", "trimester"].includes(courseType.toLowerCase())) {
-      query.courseType = courseType.toLowerCase();
+    const targetType = isFree === "true" || isFree === true ? "free" : courseType;
+    if (targetType && ["free", "paid", "trimester"].includes(targetType.toLowerCase())) {
+      query.courseType = targetType.toLowerCase();
     }
     if (level && ["beginner", "intermediate", "advanced", "all-levels"].includes(level.toLowerCase())) {
       query.level = level.toLowerCase();
+    }
+
+    // Platform / YouTube filter (applied strictly before pagination)
+    const targetPlatform = (platform || source || (isYouTube === "true" || isYouTube === true ? "youtube" : "")).toLowerCase().trim();
+    if (targetPlatform === "youtube") {
+      query.$or = [
+        { "source.platform": "youtube" },
+        { trailerVideoUrl: /youtube\.com|youtu\.be/i },
+        { "modules.lessons.videoUrl": /youtube\.com|youtu\.be/i }
+      ];
+    } else if (targetPlatform) {
+      query["source.platform"] = targetPlatform;
+    }
+
+    // Exclude enrolled courses if requested
+    if ((excludeEnrolled === "true" || excludeEnrolled === true) && req.user?._id) {
+      const enrolledCourseIds = await Enrollment.find({ student: req.user._id }).distinct("course");
+      if (enrolledCourseIds.length > 0) {
+        query._id = { $nin: enrolledCourseIds };
+      }
     }
 
     // Price range filtering
@@ -162,6 +188,13 @@ export const getCourses = async (req, res, next) => {
     const formattedCourses = courses.map((c) => ({
       ...c,
       category: normalizeCategory(c.category),
+      source: c.source || {
+        platform: (c.trailerVideoUrl && c.trailerVideoUrl.includes("youtube")) ? "youtube" : "external",
+        creatorName: "freeCodeCamp.org",
+        creatorAvatar: "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
+        channelUrl: "https://www.youtube.com/@freecodecamp",
+        url: c.trailerVideoUrl || "",
+      },
     }));
 
     return res.status(200).json({
@@ -174,6 +207,59 @@ export const getCourses = async (req, res, next) => {
         hasNextPage: pageNum < totalPages,
         hasPrevPage: pageNum > 1
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/courses/free-youtube
+ * Dedicated discovery endpoint for student dashboard "Free Courses Available" section.
+ * Returns up to 6 free YouTube courses (excluding enrolled ones if user is authenticated).
+ */
+export const getFreeYouTubeCourses = async (req, res, next) => {
+  try {
+    const limitNum = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 6));
+    const query = {
+      status: "published",
+      courseType: "free",
+      $or: [
+        { "source.platform": "youtube" },
+        { trailerVideoUrl: /youtube\.com|youtu\.be/i },
+        { "modules.lessons.videoUrl": /youtube\.com|youtu\.be/i }
+      ]
+    };
+
+    if (req.user?._id) {
+      const enrolled = await Enrollment.find({ student: req.user._id }).distinct("course");
+      if (enrolled.length > 0) {
+        query._id = { $nin: enrolled };
+      }
+    }
+
+    const courses = await Course.find(query)
+      .sort({ enrolledCount: -1, createdAt: -1 })
+      .limit(limitNum)
+      .populate("instructor", "firstName lastName avatarUrl bio")
+      .select("-modules.lessons.videoUrl -modules.quizzes.questions.correctOptionIndex")
+      .lean();
+
+    const formattedCourses = courses.map((c) => ({
+      ...c,
+      category: normalizeCategory(c.category),
+      source: c.source || {
+        platform: "youtube",
+        creatorName: "freeCodeCamp.org",
+        creatorAvatar: "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
+        channelUrl: "https://www.youtube.com/@freecodecamp",
+        url: c.trailerVideoUrl || "",
+      },
+    }));
+
+    return res.status(200).json({
+      courses: formattedCourses,
+      count: formattedCourses.length
     });
   } catch (error) {
     next(error);
@@ -224,6 +310,13 @@ export const getCourseBySlugOrId = async (req, res, next) => {
 
     const sanitizedCourse = applyContentShield(course, isEnrolled, isInstructorOrAdmin);
     sanitizedCourse.category = normalizeCategory(sanitizedCourse.category);
+    sanitizedCourse.source = sanitizedCourse.source || {
+      platform: (sanitizedCourse.trailerVideoUrl && sanitizedCourse.trailerVideoUrl.includes("youtube")) ? "youtube" : "external",
+      creatorName: "freeCodeCamp.org",
+      creatorAvatar: "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
+      channelUrl: "https://www.youtube.com/@freecodecamp",
+      url: sanitizedCourse.trailerVideoUrl || "",
+    };
 
     return res.status(200).json({
       course: sanitizedCourse,

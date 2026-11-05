@@ -470,6 +470,16 @@
 8. **OpenAPI 3.0 Standard**:
    - Published complete OpenAPI 3.0 specification in `src/docs/openapi.json` and mounted `GET /api/openapi.json` for automated frontend SDK generation.
 
+9. **Frontend LMS Audit Remediation & Hardening (05 Nov 2026)**:
+   - **Course Source Metadata**: Added top-level `source: { platform, creatorName, creatorAvatar, channelUrl, url }` to `Course.model.js` and course summaries.
+   - **Pre-Pagination YouTube Free Filter**: Enhanced `GET /api/courses` with `platform=youtube`, `isYouTube=true`, `isFree=true`, and `excludeEnrolled=true` applied in MongoDB query strictly before pagination and count calculation.
+   - **Student Dashboard Free YouTube Endpoint**: Implemented `GET /api/courses/free-youtube` returning up to 6 free YouTube courses (excluding enrolled ones for authenticated students).
+   - **Lesson 90% Auto-Completion & Notes**: Updated `PUT /api/lms/lessons/:lessonId/progress` to automatically mark lessons completed when `watchProgressPercent >= 90%` or `watchedSeconds / durationSec >= 0.9`. Added persistence for `scrollPosition`, `lastActivityAt`, and student `notes`.
+   - **Quiz Answer Shielding**: Hardened `lmsQuiz.controller.js` so `POST /api/lms/quiz-attempts/:attemptId/answers` never leaks `correctOptionIndex` or explanations while the attempt is in progress. Answer keys and evaluation are revealed only upon final submission (`POST .../submit`).
+   - **Live Session 10-Minute Join Window & Leave Tracking**: Enforced 10-minute pre-session join window in `POST /api/lms/live-sessions/:id/join`. Added `POST /api/lms/live-sessions/:id/leave` to persist `leftAt` and calculate attended `durationMinutes`.
+   - **Certificate Progress Bug Fix**: Fixed query in `getMyCertificates` from `isCompleted: true` to `status: "completed"` and resolved course modules fallback.
+   - **Alignment Questionnaire**: Created `FRONTEND_ALIGNMENT_QUESTIONS.md` documenting decisions on 10-category taxonomy, 22-node trail, 8-stage final projects, and completion weights.
+
 
 ---
 
