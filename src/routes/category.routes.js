@@ -3,6 +3,7 @@ import {
   getCategories,
   createCategory,
   updateCategory,
+  updateCategoryStatus,
   deleteCategory
 } from "../controllers/category.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -26,6 +27,13 @@ router.put(
   authMiddleware,
   roleMiddleware("admin"),
   updateCategory
+);
+
+router.put(
+  "/admin/categories/:id/status",
+  authMiddleware,
+  roleMiddleware("admin"),
+  updateCategoryStatus
 );
 
 router.delete(

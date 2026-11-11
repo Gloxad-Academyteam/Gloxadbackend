@@ -89,59 +89,122 @@ export const getCohortCurriculum = async (req, res, next) => {
       })),
     }));
 
-    // Generate 22-node learning trail from curriculum modules and milestones
+    // Generate 12-week, 22-node learning trail from curriculum modules and academic schedule
     const learningTrail = [];
-    let trailIndex = 1;
-    modules.forEach((mod) => {
-      (mod.lessons || []).forEach((l) => {
-        if (trailIndex <= 22) {
-          const p = progressMap.get(String(l._id));
-          learningTrail.push({
-            nodeIndex: trailIndex++,
-            type: "lesson",
-            itemId: l._id,
-            title: l.title,
-            moduleTitle: mod.title,
-            status: p?.status === "completed" ? "completed" : p?.status === "in_progress" ? "in_progress" : "available",
-            completed: p?.status === "completed",
-            scrollPosition: p?.scrollPosition || 0,
-            lastActivityAt: p?.lastActivityAt || null,
-          });
-        }
-      });
-      (mod.quizzes || []).forEach((q) => {
-        if (trailIndex <= 22) {
-          learningTrail.push({
-            nodeIndex: trailIndex++,
-            type: "quiz",
-            itemId: q._id,
-            title: q.title,
-            moduleTitle: mod.title,
-            status: "available",
-            completed: false,
-          });
-        }
-      });
-    });
+    const passedQuizzes = await LmsQuizAttempt.find({
+      cohortId: cohort._id,
+      userId,
+      passed: true
+    }).distinct("quizId");
+    const passedQuizSet = new Set(passedQuizzes.map(String));
 
-    // Pad milestones up to 21 with milestone checkpoints and node 22 with capstone defense
-    while (learningTrail.length < 21) {
-      const idx = learningTrail.length + 1;
+    const submittedSubmissions = await LmsSubmission.find({
+      cohortId: cohort._id,
+      userId,
+      status: { $in: ["submitted", "pending_review", "graded"] }
+    }).lean();
+    const submissionMap = new Map(submittedSubmissions.map((s) => [String(s.assignmentId), s]));
+
+    // Nodes 1 to 10: Weeks 1 to 10 (Daily pattern: recorded, recorded, live, live, peer learning)
+    for (let w = 1; w <= 10; w++) {
+      const mod = modules[w - 1] || null;
+      const lessonCount = mod?.lessons?.length || 0;
+      const completedLessons = mod?.lessons?.filter((l) => l.completed)?.length || 0;
+      const quizPassed = mod?.quizzes?.some((q) => passedQuizSet.has(String(q._id))) || false;
+
+      const lessonCompletion = lessonCount > 0 ? completedLessons === lessonCount : completedLessons > 0;
+      const assessmentCompletion = quizPassed;
+      const taskSubmission = false; // Separate state
+      const nodeCompletion = lessonCompletion && (mod?.quizzes?.length ? assessmentCompletion : true);
+
+      let status = "available";
+      if (nodeCompletion) {
+        status = "completed";
+      } else if (completedLessons > 0) {
+        status = "in_progress";
+      } else if (w > 1 && !learningTrail[w - 2]?.completed) {
+        status = "available"; // or locked if strictly sequential
+      }
+
       learningTrail.push({
-        nodeIndex: idx,
-        type: "assignment",
-        title: `Practical Milestone ${idx}`,
-        status: "available",
-        completed: false,
+        nodeIndex: w,
+        week: w,
+        phase: "core_foundation",
+        title: mod?.title || `Week ${w}: Core Systems & Engineering`,
+        description: `Week ${w} foundation sprint covering architecture, live implementation, and peer learning sessions.`,
+        activities: ["recorded", "recorded", "live", "live", "peer_learning"],
+        completionCriteria: "Complete weekly recordings, attend live sessions, and pass weekly checkpoint",
+        moduleTitle: mod?.title || `Week ${w}`,
+        moduleId: mod?._id || null,
+        status,
+        completed: nodeCompletion,
+        lessonCompletion,
+        assessmentCompletion,
+        taskSubmission,
+        nodeCompletion
       });
     }
-    if (learningTrail.length === 21) {
+
+    // Nodes 11 to 16: Week 11 (Assessment and practical work)
+    const week11Titles = [
+      "Practical Lab 1: Core System Implementation",
+      "Practical Lab 2: API Engineering & Microservices",
+      "Mid-Term Comprehensive Assessment",
+      "Codebase Security & Performance Audit",
+      "Peer Review & Collaborative Integration",
+      "Capstone Pre-Submission & Architecture Review"
+    ];
+
+    for (let i = 0; i < 6; i++) {
+      const nodeIdx = 11 + i;
+      const title = week11Titles[i];
+      const sub = submittedSubmissions[i] || null;
+      const isSubDone = Boolean(sub);
+
       learningTrail.push({
-        nodeIndex: 22,
-        type: "project",
-        title: "Final Capstone Project Defense",
-        status: "locked",
+        nodeIndex: nodeIdx,
+        week: 11,
+        phase: "assessment_and_practical",
+        title,
+        description: `Week 11 intensive practical sprint: ${title}.`,
+        activities: ["practical_lab", "assessment_submission", "peer_critique"],
+        completionCriteria: "Submit verified code implementation or pass technical audit",
+        status: isSubDone ? "completed" : "available",
+        completed: isSubDone,
+        lessonCompletion: true,
+        assessmentCompletion: isSubDone,
+        taskSubmission: isSubDone,
+        nodeCompletion: isSubDone
+      });
+    }
+
+    // Nodes 17 to 22: Week 12 (Reflection, final live class, comprehensive quizzes, final assessment, final project, overall review)
+    const week12Nodes = [
+      { title: "Weekly Engineering Reflection & Professional Growth", activities: ["reflection_journal"], criteria: "Submit written reflection on technical progression" },
+      { title: "Final Live Classroom: Industry AMA & Thesis Debrief", activities: ["live_attendance"], criteria: "Attend final live debrief classroom" },
+      { title: "Comprehensive Exit Quizzes", activities: ["exit_quiz"], criteria: "Score at least 70% on exit knowledge checkpoint" },
+      { title: "Final Comprehensive Academic Assessment", activities: ["final_exam"], criteria: "Complete timed practical examination" },
+      { title: "Final Project Defense & Repository Submission", activities: ["capstone_defense", "code_submission"], criteria: "Deliver working project repository and defend architecture" },
+      { title: "Overall Academic Review & Degree Certification", activities: ["certification_audit"], criteria: "Administrator review and automated certificate generation" }
+    ];
+
+    for (let j = 0; j < 6; j++) {
+      const nodeIdx = 17 + j;
+      const meta = week12Nodes[j];
+      learningTrail.push({
+        nodeIndex: nodeIdx,
+        week: 12,
+        phase: "capstone_and_review",
+        title: meta.title,
+        description: `Week 12 graduation requirement: ${meta.title}.`,
+        activities: meta.activities,
+        completionCriteria: meta.criteria,
+        status: nodeIdx === 22 ? "locked" : "available",
         completed: false,
+        lessonCompletion: false,
+        assessmentCompletion: false,
+        taskSubmission: false,
+        nodeCompletion: false
       });
     }
 

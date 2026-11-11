@@ -18,6 +18,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import institutionRoutes from "./routes/institution.routes.js";
 import institutionAdminRoutes from "./routes/institutionAdmin.routes.js";
 import lmsRouter from "./routes/lms.routes.js";
+import providerRoutes from "./routes/provider.routes.js";
 import { authGuard } from "./middlewares/auth.middleware.js";
 import { roleGuard } from "./middlewares/role.middleware.js";
 import { institutionContext } from "./middlewares/institution.middleware.js";
@@ -27,6 +28,7 @@ import { checkS3Readiness } from "./utils/s3.js";
 
 // Ensure all Mongoose schemas are registered on startup
 import "./models/User.model.js";
+import "./models/Provider.model.js";
 import "./models/Trimester.model.js";
 import "./models/Cohort.model.js";
 import "./models/Course.model.js";
@@ -172,6 +174,7 @@ app.use("/api/notifications", notificationRoutes);
 
 // Mount category taxonomy & course catalog routes under /api
 app.use("/api", categoryRoutes);
+app.use("/api", providerRoutes);
 app.use("/api", courseRoutes);
 
 // Global 404 handler for unmatched routes

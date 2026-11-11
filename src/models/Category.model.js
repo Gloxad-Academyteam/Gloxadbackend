@@ -49,6 +49,14 @@ const categorySchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    tags: [{ type: String, trim: true }],
+    pathways: [{ type: String, trim: true }],
+    aliases: [{ type: String, lowercase: true, trim: true }],
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
     subCategories: [subCategorySchema]
   },
   {

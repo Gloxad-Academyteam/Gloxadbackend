@@ -285,8 +285,8 @@ async function runTests() {
         partialQuizData.result.passed === false &&
         partialQuizData.result.correctAnswers === 1 &&
         partialQuizData.result.breakdown.length === 2 &&
-        partialQuizData.result.breakdown[0].correctOptionIndex === undefined,
-      "Partial quiz submission scores 50%, marks passed: false, and shields correctOptionIndex"
+        partialQuizData.result.breakdown[0].correctOptionIndex !== undefined,
+      "Partial quiz submission scores 50%, marks passed: false, and returns correctOptionIndex after attempt"
     );
 
     // Submit all correct answers -> 100% score (Passed)

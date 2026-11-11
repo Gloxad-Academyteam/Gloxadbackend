@@ -16,11 +16,21 @@ import {
   getCertificateController,
   verifyCertificateController,
 } from '../controllers/learning.controller.js';
+import {
+  getModuleLockStates,
+  getModuleTask,
+  submitModuleTask,
+} from '../controllers/moduleLearning.controller.js';
 
 const router = express.Router();
 
 // Public certificate verification route
 router.get('/verify-certificate/:certificateId', verifyCertificateController);
+
+// Sequential module lock state & tasks
+router.get('/:courseId/modules', authGuard, checkEnrollment, getModuleLockStates);
+router.get('/:courseId/modules/:moduleId/task', authGuard, checkEnrollment, getModuleTask);
+router.post('/:courseId/modules/:moduleId/task', authGuard, checkEnrollment, submitModuleTask);
 
 // Lesson progress tracking
 router.post('/:courseId/progress', authGuard, checkEnrollment, updateProgressController);

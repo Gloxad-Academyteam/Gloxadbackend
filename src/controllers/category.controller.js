@@ -8,10 +8,26 @@ const escapeRegex = (text) => {
 /**
  * Public Endpoint: GET /api/categories
  * Retrieves full hierarchical category taxonomy tree.
+ * Supports filtering by tag, pathway, and optional includeInactive for admins.
  */
 export const getCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find().sort({ order: 1, name: 1 });
+    const { includeInactive, tag, pathway } = req.query;
+    const filter = {};
+
+    if (includeInactive !== "true") {
+      filter.isActive = { $ne: false };
+    }
+
+    if (tag) {
+      filter.tags = tag;
+    }
+
+    if (pathway) {
+      filter.pathways = pathway;
+    }
+
+    const categories = await Category.find(filter).sort({ order: 1, name: 1 });
     return res.status(200).json({ categories });
   } catch (error) {
     next(error);
@@ -20,11 +36,11 @@ export const getCategories = async (req, res, next) => {
 
 /**
  * Admin Endpoint: POST /api/admin/categories
- * Creates a new category with optional subcategories and topics.
+ * Creates a new category with optional subcategories, tags, pathways, and topics.
  */
 export const createCategory = async (req, res, next) => {
   try {
-    const { name, icon, imageUrl, order, subCategories } = req.body;
+    const { name, icon, imageUrl, order, subCategories, tags, pathways, isActive, aliases } = req.body;
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "Category name is required" });
@@ -53,6 +69,10 @@ export const createCategory = async (req, res, next) => {
       icon: icon || "",
       imageUrl: imageUrl ? String(imageUrl).trim() : "",
       order: order !== undefined ? Number(order) : 0,
+      tags: Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean) : [],
+      pathways: Array.isArray(pathways) ? pathways.map((p) => String(p).trim()).filter(Boolean) : [],
+      aliases: Array.isArray(aliases) ? aliases.map((a) => String(a).trim().toLowerCase()).filter(Boolean) : [],
+      isActive: isActive !== false,
       subCategories: formattedSubCategories
     });
 
@@ -70,7 +90,7 @@ export const createCategory = async (req, res, next) => {
 
 /**
  * Admin Endpoint: PUT /api/admin/categories/:id
- * Updates an existing category by MongoDB ObjectId.
+ * Updates an existing category by MongoDB ObjectId. Preserves previous slugs as aliases.
  */
 export const updateCategory = async (req, res, next) => {
   try {
@@ -85,7 +105,7 @@ export const updateCategory = async (req, res, next) => {
       return res.status(404).json({ error: "Category not found" });
     }
 
-    const { name, icon, imageUrl, order, subCategories } = req.body;
+    const { name, icon, imageUrl, order, subCategories, tags, pathways, isActive, aliases } = req.body;
 
     if (name !== undefined) {
       if (typeof name !== "string" || !name.trim()) {
@@ -100,9 +120,14 @@ export const updateCategory = async (req, res, next) => {
         if (collision) {
           return res.status(409).json({ error: "Category name already exists" });
         }
+        // Save previous slug in aliases
+        if (category.slug && (!category.aliases || !category.aliases.includes(category.slug))) {
+          if (!category.aliases) category.aliases = [];
+          category.aliases.push(category.slug);
+        }
+        category.name = trimmedName;
+        category.slug = slugify(trimmedName);
       }
-      category.name = trimmedName;
-      category.slug = slugify(trimmedName);
     }
 
     if (icon !== undefined) {
@@ -115,6 +140,22 @@ export const updateCategory = async (req, res, next) => {
 
     if (order !== undefined) {
       category.order = Number(order);
+    }
+
+    if (tags !== undefined && Array.isArray(tags)) {
+      category.tags = tags.map((t) => String(t).trim()).filter(Boolean);
+    }
+
+    if (pathways !== undefined && Array.isArray(pathways)) {
+      category.pathways = pathways.map((p) => String(p).trim()).filter(Boolean);
+    }
+
+    if (aliases !== undefined && Array.isArray(aliases)) {
+      category.aliases = aliases.map((a) => String(a).trim().toLowerCase()).filter(Boolean);
+    }
+
+    if (isActive !== undefined) {
+      category.isActive = Boolean(isActive);
     }
 
     if (subCategories !== undefined) {
@@ -138,6 +179,40 @@ export const updateCategory = async (req, res, next) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: "Category name already exists" });
     }
+    next(error);
+  }
+};
+
+/**
+ * Admin Endpoint: PUT /api/admin/categories/:id/status
+ * Soft activation / deactivation of a category without breaking existing course links.
+ */
+export const updateCategoryStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid category ID format" });
+    }
+
+    if (isActive === undefined) {
+      return res.status(400).json({ error: "isActive boolean is required" });
+    }
+
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+
+    category.isActive = Boolean(isActive);
+    await category.save();
+
+    return res.status(200).json({
+      message: `Category ${category.isActive ? "activated" : "deactivated"} successfully`,
+      category
+    });
+  } catch (error) {
     next(error);
   }
 };
@@ -171,8 +246,13 @@ export const deleteCategory = async (req, res, next) => {
     }
 
     if (activeCourseCount > 0) {
-      return res.status(409).json({
-        error: "Cannot delete category currently associated with active courses"
+      // Soft-deactivate to prevent breaking historical courses or link references
+      category.isActive = false;
+      await category.save();
+      return res.status(200).json({
+        message: "Category deactivated to preserve existing course references",
+        category,
+        deactivated: true
       });
     }
 

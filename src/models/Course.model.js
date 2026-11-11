@@ -39,7 +39,17 @@ const moduleSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     lessons: [lessonSchema],
-    quizzes: [quizSchema]
+    quizzes: [quizSchema],
+    task: {
+      prompt: { type: String, default: "" },
+      minWords: { type: Number, default: 50 },
+      submissionLinkAllowed: { type: Boolean, default: true }
+    },
+    provider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Provider",
+      default: null
+    }
   },
   { _id: true }
 );
@@ -90,6 +100,18 @@ const courseSchema = new mongoose.Schema(
       default: true,
       index: true
     },
+    sequentialModules: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    provider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Provider",
+      default: null,
+      index: true
+    },
+    tags: [{ type: String, trim: true, index: true }],
     price: { type: Number, default: 0, min: 0 },
     discountPrice: { type: Number, default: 0, min: 0 },
     thumbnail: { type: String, default: "" },

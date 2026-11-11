@@ -4,6 +4,11 @@ import { Enrollment } from '../models/Enrollment.model.js';
 import { Question, Note, Announcement } from '../models/QuestionNoteMisc.model.js';
 import { LmsCertificate } from '../models/LmsCertificate.model.js';
 import { buildLinkedInShare } from './lmsCertificate.controller.js';
+import {
+  checkModuleAccess,
+  checkQuizAttemptAllowed,
+  calculateCourseProgress
+} from '../utils/moduleGate.js';
 
 /**
  * Update student playback position and lesson completion status
@@ -20,12 +25,14 @@ export const updateProgressController = async (req, res, next) => {
 
     // Verify lesson exists within the course modules
     let lessonFound = false;
+    let moduleWithLesson = null;
     if (req.course.modules && req.course.modules.length > 0) {
       for (const mod of req.course.modules) {
         if (mod.lessons && mod.lessons.length > 0) {
           const found = mod.lessons.find((l) => l._id.toString() === lessonId.toString());
           if (found) {
             lessonFound = true;
+            moduleWithLesson = mod;
             break;
           }
         }
@@ -50,6 +57,17 @@ export const updateProgressController = async (req, res, next) => {
       });
     }
 
+    // Check sequential module gating
+    if (req.course.sequentialModules && moduleWithLesson) {
+      const access = checkModuleAccess(req.course, enrollment, moduleWithLesson._id);
+      if (!access.allowed) {
+        return res.status(access.status || 403).json({
+          error: access.error,
+          code: access.code,
+        });
+      }
+    }
+
     enrollment.lastAccessedLesson = lessonId;
     if (playbackPosition !== undefined) {
       enrollment.lastPlaybackPosition = Number(playbackPosition);
@@ -64,25 +82,10 @@ export const updateProgressController = async (req, res, next) => {
       }
     }
 
-    // Recalculate course completion progress percentage
-    const totalLessons = (req.course.modules || []).reduce(
-      (sum, mod) => sum + ((mod.lessons && mod.lessons.length) || 0),
-      0
-    );
+    // Recalculate course completion progress percentage using sequential rules if applicable
+    enrollment.progressPercentage = calculateCourseProgress(req.course, enrollment);
 
-    let progressPercentage = 0;
-    if (totalLessons > 0) {
-      progressPercentage = Math.min(
-        100,
-        Math.round((enrollment.completedLessons.length / totalLessons) * 100)
-      );
-    } else {
-      progressPercentage = 100;
-    }
-
-    enrollment.progressPercentage = progressPercentage;
-
-    if (progressPercentage === 100) {
+    if (enrollment.progressPercentage === 100) {
       enrollment.isCompleted = true;
       if (!enrollment.completedAt) {
         enrollment.completedAt = new Date();
@@ -123,12 +126,14 @@ export const submitQuizController = async (req, res, next) => {
 
     // Find target quiz within course modules
     let quiz = null;
+    let moduleWithQuiz = null;
     if (req.course.modules && req.course.modules.length > 0) {
       for (const mod of req.course.modules) {
         if (mod.quizzes && mod.quizzes.length > 0) {
           const found = mod.quizzes.find((q) => q._id.toString() === quizId.toString());
           if (found) {
             quiz = found;
+            moduleWithQuiz = mod;
             break;
           }
         }
@@ -137,6 +142,31 @@ export const submitQuizController = async (req, res, next) => {
 
     if (!quiz) {
       return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    // Find or create enrollment record
+    let enrollment = await Enrollment.findOne({
+      user: req.user._id,
+      course: req.course._id,
+    });
+
+    if (!enrollment) {
+      enrollment = new Enrollment({
+        user: req.user._id,
+        course: req.course._id,
+        enrolledAt: new Date(),
+      });
+    }
+
+    // Check sequential gating for quiz attempt
+    if (req.course.sequentialModules && moduleWithQuiz) {
+      const gateCheck = checkQuizAttemptAllowed(req.course, enrollment, moduleWithQuiz._id);
+      if (!gateCheck.allowed) {
+        return res.status(gateCheck.status || 409).json({
+          error: gateCheck.error,
+          code: gateCheck.code,
+        });
+      }
     }
 
     const totalQuestions = quiz.questions ? quiz.questions.length : 0;
@@ -167,6 +197,7 @@ export const submitQuizController = async (req, res, next) => {
         breakdown.push({
           questionId: question._id,
           selectedOptionIndex,
+          correctOptionIndex: question.correctOptionIndex,
           isCorrect,
         });
       });
@@ -176,27 +207,23 @@ export const submitQuizController = async (req, res, next) => {
     const passingScore = quiz.passingScore !== undefined ? quiz.passingScore : 70;
     const passed = score >= passingScore;
 
-    // Record score attempt in student enrollment
-    let enrollment = await Enrollment.findOne({
-      user: req.user._id,
-      course: req.course._id,
-    });
-
-    if (!enrollment) {
-      enrollment = new Enrollment({
-        user: req.user._id,
-        course: req.course._id,
-        enrolledAt: new Date(),
-      });
-    }
-
     enrollment.quizScores.push({
       quizId: quiz._id,
+      moduleId: moduleWithQuiz ? String(moduleWithQuiz._id) : undefined,
       score,
       passingScore,
       passed,
       attemptedAt: new Date(),
     });
+
+    // Recalculate progress
+    enrollment.progressPercentage = calculateCourseProgress(req.course, enrollment);
+    if (enrollment.progressPercentage === 100) {
+      enrollment.isCompleted = true;
+      if (!enrollment.completedAt) {
+        enrollment.completedAt = new Date();
+      }
+    }
 
     await enrollment.save();
 

@@ -41,6 +41,15 @@ const enrollmentSchema = new mongoose.Schema(
         attemptedAt: { type: Date, default: Date.now },
       },
     ],
+    taskSubmissions: [
+      {
+        moduleId: { type: mongoose.Schema.Types.ObjectId, required: true },
+        text: { type: String, default: "" },
+        link: { type: String, default: "" },
+        wordCount: { type: Number, default: 0 },
+        submittedAt: { type: Date, default: Date.now },
+      },
+    ],
     progressPercentage: {
       type: Number,
       default: 0,

@@ -6,10 +6,12 @@
 ---
 
 ## Current Phase
-- **Phase 4**: LMS Live Classrooms, Community, Certificates & Analytics
+- **Backend Handover (v1.1, 11 Nov 2026)**: Part A (Module-by-Module Sequential Gating) & Phase 1 (Academic & Catalog Foundations)
 
 ## Current Goal
-- [x] Milestone 16 (Unit 20: LMS Live Classrooms, Community, Certificates & Analytics) [COMPLETED & VERIFIED].
+- [x] Part A: Module-by-module sequential course progression (Lessons -> Quiz -> Written Task -> Unlock Next Module), error codes (403 MODULE_LOCKED, 409 LESSONS_INCOMPLETE, 409 QUIZ_NOT_PASSED), module task endpoints, deterministic assessments generator, and 27-test automated verification suite. [COMPLETED & VERIFIED].
+- [x] Phase 1: 18 primary categories dynamic taxonomy with tags, pathways, and soft deactivation; Provider registry entity with YouTube official embed policy; 12-week 22-node curriculum trail layout. [COMPLETED & VERIFIED].
+- [ ] Phase 2–5 (Assigned to Secondary Backend Engineer): 8-stage project state machine, gradebooks & audit, LiveKit WebRTC classroom recording egress, persistent workspace 3-layer autosave, Judge0 sandbox runner.
 
 ---
 
