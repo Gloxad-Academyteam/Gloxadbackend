@@ -3045,6 +3045,221 @@ Accept: application/json</code></pre>
         </div>
       </div>
 
+      <!-- PUT /api/admin/categories/:id/status -->
+      <div class="endpoint-card" id="ep-admin-categories-status" data-search="category status active deactivate put admin">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="endpoint-uri">/api/admin/categories/:id/status</span>
+          <span class="endpoint-tag-pill tag-bearer">Admin Only (Bearer Token)</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Soft activates or deactivates a category. Deactivation hides it from public discovery without deleting records or breaking existing course links.
+          </div>
+          <div class="code-grid">
+            <div class="code-block">
+              <div class="code-header">
+                <span>Request Body Example</span>
+                <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+              </div>
+              <pre><code>{
+  "isActive": false
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header">
+                <span>Response <span class="code-status-pill status-badge-200">200 OK</span></span>
+                <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+              </div>
+              <pre><code>{
+  "message": "Category deactivated successfully",
+  "category": {
+    "_id": "651a2b3c4d5e6f7a8b9c0d1e",
+    "name": "Software Development",
+    "isActive": false
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Provider Registry & Content Attribution -->
+      <section class="doc-section" id="provider-registry">
+        <h2 class="section-heading">5b. Content Provider Registry & Attribution</h2>
+        <p>
+          Reusable provider attribution system tracking original content owners (creators, universities, research bodies), ownership classification (<code>gloxad_produced</code>, <code>licensed_partner</code>, <code>externally_curated</code>), and platform embed policies (YouTube official player and external redirection).
+        </p>
+      </section>
+
+      <!-- GET /api/providers -->
+      <div class="endpoint-card" id="ep-providers-get" data-search="providers content attribution list get public">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-uri">/api/providers</span>
+          <span class="endpoint-tag-pill tag-public">Public (No Token Required)</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Returns all active content providers sorted alphabetically. Supports filtering by <code>platform</code> (youtube/s3), <code>type</code> (creator/institution), and <code>ownershipClass</code>.
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span>200 OK Response Example</span>
+              <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "providers": [
+    {
+      "_id": "673200000000000000000001",
+      "name": "freeCodeCamp.org",
+      "slug": "freecodecamp",
+      "type": "institution",
+      "platform": "youtube",
+      "channelUrl": "https://www.youtube.com/@freecodecamp",
+      "ownershipClass": "externally_curated",
+      "embedAllowed": true,
+      "isActive": true
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- GET /api/providers/:idOrSlug -->
+      <div class="endpoint-card" id="ep-providers-get-single" data-search="provider single details get">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-uri">/api/providers/:idOrSlug</span>
+          <span class="endpoint-tag-pill tag-public">Public (No Token Required)</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Retrieves single provider attribution profile by unique slug or MongoDB ObjectId.
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span>200 OK Response Example</span>
+              <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "provider": {
+    "_id": "673200000000000000000001",
+    "name": "freeCodeCamp.org",
+    "slug": "freecodecamp",
+    "type": "institution",
+    "platform": "youtube",
+    "channelUrl": "https://www.youtube.com/@freecodecamp",
+    "originalUrl": "https://www.freecodecamp.org",
+    "ownershipClass": "externally_curated",
+    "embedAllowed": true,
+    "isActive": true
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- POST /api/admin/providers -->
+      <div class="endpoint-card" id="ep-admin-providers-create" data-search="admin create provider post attribution">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-post">POST</span>
+          <span class="endpoint-uri">/api/admin/providers</span>
+          <span class="endpoint-tag-pill tag-bearer">Admin Only (Bearer Token)</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Registers a new content provider in the global platform registry. Enforces unique name/slug and validates ownership classification.
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span>Request Body Example</span>
+              <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "name": "Harvard / CS50",
+  "type": "institution",
+  "platform": "youtube",
+  "channelUrl": "https://www.youtube.com/@cs50",
+  "originalUrl": "https://cs50.harvard.edu",
+  "ownershipClass": "externally_curated",
+  "embedAllowed": true,
+  "bio": "Harvard University's introduction to computer science."
+}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span>201 Created Response Example</span>
+              <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "message": "Provider created successfully",
+  "provider": {
+    "_id": "673200000000000000000002",
+    "name": "Harvard / CS50",
+    "slug": "cs50-harvard",
+    "ownershipClass": "externally_curated",
+    "embedAllowed": true,
+    "isActive": true
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- PUT /api/admin/providers/:id -->
+      <div class="endpoint-card" id="ep-admin-providers-update" data-search="admin update provider put attribution">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-put">PUT</span>
+          <span class="endpoint-uri">/api/admin/providers/:id</span>
+          <span class="endpoint-tag-pill tag-bearer">Admin Only (Bearer Token)</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Updates an existing provider registry entity.
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span>200 OK Response Example</span>
+              <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "message": "Provider updated successfully",
+  "provider": {
+    "_id": "673200000000000000000002",
+    "name": "Harvard / CS50",
+    "embedAllowed": true
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- DELETE /api/admin/providers/:id -->
+      <div class="endpoint-card" id="ep-admin-providers-delete" data-search="admin delete provider delete attribution">
+        <div class="endpoint-header-row">
+          <span class="method-badge method-delete">DELETE</span>
+          <span class="endpoint-uri">/api/admin/providers/:id</span>
+          <span class="endpoint-tag-pill tag-bearer">Admin Only (Bearer Token)</span>
+        </div>
+        <div class="endpoint-content">
+          <div class="endpoint-desc">
+            Deletes or soft-deactivates a provider. If active courses reference this provider, soft deactivation is applied automatically to prevent breaking attribution links.
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span>200 OK Response Example</span>
+              <button class="copy-code-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "message": "Provider deactivated to preserve course attribution references",
+  "deactivated": true
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
       <!-- SECTION: Course Catalog & Public Discovery -->
       <section class="doc-section" id="course-catalog">
         <h2 class="section-heading">6. Course Catalog & Public Discovery</h2>
