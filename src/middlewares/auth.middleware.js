@@ -1,5 +1,6 @@
 import { verifyToken } from "../utils/jwt.js";
 import { User } from "../models/User.model.js";
+import { touchPresence } from "../utils/presence.js";
 
 export const authGuard = async (req, res, next) => {
   try {
@@ -43,6 +44,7 @@ export const authGuard = async (req, res, next) => {
     }
 
     req.user = user;
+    touchPresence(user._id, user.role);
     next();
   } catch (error) {
     next(error);

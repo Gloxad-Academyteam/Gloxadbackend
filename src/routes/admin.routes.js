@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authGuard } from '../middlewares/auth.middleware.js';
 import { roleGuard } from '../middlewares/role.middleware.js';
+import { getAnalytics, getLiveMetrics } from '../controllers/adminMetrics.controller.js';
 import {
   getDashboardStatsController,
   getRecentRegistrationsController,
@@ -44,6 +45,8 @@ const router = Router();
 router.use(authGuard, roleGuard('admin'));
 
 router.get('/dashboard-stats', getDashboardStatsController);
+router.get('/analytics', getAnalytics);
+router.get('/live-metrics', getLiveMetrics);
 router.get('/recent-registrations', getRecentRegistrationsController);
 router.get('/recent-transactions', getRecentTransactionsController);
 

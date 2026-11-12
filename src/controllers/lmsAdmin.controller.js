@@ -39,7 +39,7 @@ export const getAdminAnalytics = async (req, res, next) => {
     const completionRate =
       totalAllEnrollments > 0
         ? Math.round((totalCompletedEnrollments / totalAllEnrollments) * 100)
-        : 82; // Fallback to 82% if fresh database
+        : null; // No enrolments yet, so there is nothing to measure
 
     // 4. Platform Health Check
     const dbConnected = mongoose.connection.readyState === 1;
@@ -52,32 +52,29 @@ export const getAdminAnalytics = async (req, res, next) => {
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const uptimeFormatted = days > 0 ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m`;
 
+    // Only facts we can measure: how long this server has been up and whether its dependencies answer
     const platformHealth = {
       uptime: uptimeFormatted,
       uptimeSeconds,
-      uptimePercentage: `${(99.90 + Math.min(0.09, (uptimeSeconds % 100) / 1000)).toFixed(2)}%`,
       status: isHealthy ? "healthy" : "degraded",
       database: dbConnected ? "connected" : "disconnected",
       storage: storageConnected ? "connected" : "degraded",
       lastChecked: new Date(),
     };
 
-    // 5. Enrollment Trends (recent 6 months)
+    // 5. Enrollment trends: real enrolments per month for the last 6 months
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const now = new Date();
+    const windowStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const monthly = await Enrollment.aggregate([
+      { $match: { enrolledAt: { $gte: windowStart } } },
+      { $group: { _id: { y: { $year: "$enrolledAt" }, m: { $month: "$enrolledAt" } }, count: { $sum: 1 } } },
+    ]);
     const enrollmentTrends = [];
-
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const mName = monthNames[d.getMonth()];
-      // Count baseline enrollments
-      const multiplier = 6 - i;
-      const count = Math.max(12, Math.round(totalEnrollments * (0.4 + multiplier * 0.1)));
-      enrollmentTrends.push({
-        month: mName,
-        year: d.getFullYear(),
-        count,
-      });
+      const found = monthly.find((row) => row._id.y === d.getFullYear() && row._id.m === d.getMonth() + 1);
+      enrollmentTrends.push({ month: monthNames[d.getMonth()], year: d.getFullYear(), count: found ? found.count : 0 });
     }
 
     return res.status(200).json({

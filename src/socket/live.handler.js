@@ -209,6 +209,12 @@ export const initLiveNamespace = (io) => {
   return liveNamespace;
 };
 
+/** How many sockets are in a live class room right now */
+export const getLiveRoomCount = (sessionId) => {
+  if (!liveNamespace) return 0;
+  return liveNamespace.adapter.rooms.get(`session:${sessionId}`)?.size || 0;
+};
+
 /**
  * Broadcast participants update with active room count
  * @param {string} sessionId

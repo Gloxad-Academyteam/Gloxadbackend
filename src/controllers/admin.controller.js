@@ -59,15 +59,23 @@ export const getDashboardStatsController = async (req, res, next) => {
 export const getRecentRegistrationsController = async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
 
-    const users = await User.find()
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .select('-password');
+    const [users, total] = await Promise.all([
+      User.find()
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select('-password'),
+      User.countDocuments(),
+    ]);
 
     return res.status(200).json({
       users,
-      count: users.length
+      count: users.length,
+      total,
+      page,
+      totalPages: Math.max(Math.ceil(total / limit), 1)
     });
   } catch (error) {
     next(error);
@@ -81,16 +89,24 @@ export const getRecentRegistrationsController = async (req, res, next) => {
 export const getRecentTransactionsController = async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
 
-    const transactions = await Transaction.find()
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('user', 'firstName lastName email')
-      .populate('course', 'title');
+    const [transactions, total] = await Promise.all([
+      Transaction.find()
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('user', 'firstName lastName email')
+        .populate('course', 'title'),
+      Transaction.countDocuments(),
+    ]);
 
     return res.status(200).json({
       transactions,
-      count: transactions.length
+      count: transactions.length,
+      total,
+      page,
+      totalPages: Math.max(Math.ceil(total / limit), 1)
     });
   } catch (error) {
     next(error);
@@ -532,8 +548,8 @@ export const getFinanceMetricsController = async (req, res, next) => {
     return res.status(200).json({
       finance: {
         grossRevenue: stats.grossRevenue,
-        platformCommission: stats.platformCommission || Math.round(stats.grossRevenue * 0.3),
-        instructorPayoutsTotal: stats.instructorPayoutsTotal || Math.round(stats.grossRevenue * 0.7),
+        platformCommission: stats.platformCommission || 0,
+        instructorPayoutsTotal: stats.instructorPayoutsTotal || 0,
         currency: 'NGN',
         totalSuccessfulTransactions: stats.totalSuccessfulTransactions,
         monthlyBreakdown
