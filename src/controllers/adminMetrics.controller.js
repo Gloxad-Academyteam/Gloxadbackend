@@ -11,6 +11,8 @@ import { LmsLiveSession } from "../models/LmsLiveSession.model.js";
 import { LmsCertificate } from "../models/LmsCertificate.model.js";
 import { presenceSummary } from "../utils/presence.js";
 import { getLiveRoomCount } from "../socket/live.handler.js";
+import { ActivityLog } from "../models/ActivityLog.model.js";
+import { trafficSummary } from "../utils/traffic.js";
 
 // Nigeria has no daylight saving, so days are cut at UTC+1
 const TZ = "Africa/Lagos";
@@ -317,6 +319,7 @@ export const getLiveMetrics = async (req, res, next) => {
       today: { signups: signupsToday, enrolments: enrolmentsToday, revenue: revenueToday.total, payments: revenueToday.count, scholarshipApplications: scholarshipToday },
       queue: { pendingTutors, pendingCourses, scholarshipApplications: applicationsToReview, appeals: openAppeals },
       recent,
+      traffic: trafficSummary(30),
       system: {
         database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
         uptimeSeconds: Math.floor(process.uptime()),
@@ -329,4 +332,67 @@ export const getLiveMetrics = async (req, res, next) => {
   }
 };
 
-export default { getAnalytics, getLiveMetrics };
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * GET /api/admin/activity
+ * Everything that happened on the app, newest first.
+ * Filters: category, role, ok (true/false), search (name, email, label, path), from, to, actor (user id)
+ */
+export const getActivity = async (req, res, next) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+    const filter = {};
+    if (req.query.category) filter.category = String(req.query.category);
+    if (req.query.role) filter.actorRole = String(req.query.role);
+    if (req.query.ok === "true" || req.query.ok === "false") filter.ok = req.query.ok === "true";
+    if (req.query.actor && mongoose.isValidObjectId(req.query.actor)) filter.actorId = req.query.actor;
+    if (req.query.from || req.query.to) {
+      filter.createdAt = {};
+      if (req.query.from && !Number.isNaN(Date.parse(req.query.from))) filter.createdAt.$gte = new Date(req.query.from);
+      if (req.query.to && !Number.isNaN(Date.parse(req.query.to))) filter.createdAt.$lte = new Date(req.query.to);
+      if (Object.keys(filter.createdAt).length === 0) delete filter.createdAt;
+    }
+    const search = String(req.query.search || "").trim().slice(0, 80);
+    if (search) {
+      const regex = new RegExp(escapeRegex(search), "i");
+      filter.$or = [{ actorName: regex }, { actorEmail: regex }, { label: regex }, { path: regex }, { ip: regex }];
+    }
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [items, total, byCategory, last24h, failed24h] = await Promise.all([
+      ActivityLog.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      ActivityLog.countDocuments(filter),
+      ActivityLog.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: "$category", count: { $sum: 1 } } }]),
+      ActivityLog.countDocuments({ createdAt: { $gte: since } }),
+      ActivityLog.countDocuments({ createdAt: { $gte: since }, ok: false }),
+    ]);
+
+    return res.status(200).json({
+      items: items.map((item) => ({
+        id: String(item._id),
+        at: item.createdAt,
+        label: item.label,
+        category: item.category,
+        method: item.method,
+        path: item.path,
+        status: item.status,
+        ok: item.ok,
+        durationMs: item.durationMs,
+        actor: { id: item.actorId ? String(item.actorId) : "", name: item.actorName, email: item.actorEmail, role: item.actorRole },
+        targetId: item.targetId,
+        ip: item.ip,
+        userAgent: item.userAgent,
+      })),
+      total,
+      page,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+      summary: { last24h, failed24h, byCategory: Object.fromEntries(byCategory.map((row) => [row._id, row.count])) },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default { getAnalytics, getLiveMetrics, getActivity };

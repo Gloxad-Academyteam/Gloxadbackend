@@ -334,7 +334,25 @@ export const sendSubscriptionReceiptEmail = async ({
   return await sendMail({ to, subject, text, html });
 };
 
+export const sendNotificationEmail = async ({ to, name, title, message, url }) => {
+  const subject = title;
+  const text = `Hello ${name || "there"},\n\n${message}${url ? `\n\nOpen it: ${url}` : ""}\n\nYou can turn these emails off on your notifications page.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 12px;">
+      <p style="font-size: 13px; color: #64748B; margin: 0 0 12px;">Gloxad Academy</p>
+      <h2 style="color: #12142B; margin: 0 0 12px; font-size: 20px;">${title}</h2>
+      <p style="font-size: 15px; color: #1E293B; line-height: 1.6;">${message}</p>
+      ${url ? `<p style="margin: 24px 0;"><a href="${url}" style="background:#12142B;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-size:14px;">Open on Gloxad</a></p>` : ""}
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #94A3B8;">
+        You get this email because email alerts are on. You can turn them off on your notifications page.
+      </div>
+    </div>
+  `;
+  return await sendMail({ to, subject, text, html });
+};
+
 export default {
+  sendNotificationEmail,
   sendEmailVerificationOtp,
   sendPasswordResetOtp,
   sendWelcomeEmail,

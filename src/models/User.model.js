@@ -24,6 +24,8 @@ const notificationPreferencesSchema = new Schema(
     commentReplies: { type: Boolean, default: true },
     dailyProfileVisits: { type: Boolean, default: false },
     lectureFileDownloads: { type: Boolean, default: true },
+    // Also email me each in-app notification. Off until the person turns it on.
+    emailAlerts: { type: Boolean, default: false },
   },
   { _id: false }
 );

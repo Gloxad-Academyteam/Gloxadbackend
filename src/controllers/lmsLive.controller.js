@@ -6,6 +6,10 @@ import { LmsChatMessage } from "../models/LmsChatMessage.model.js";
 import { Cohort } from "../models/Cohort.model.js";
 import { generateLiveKitCredentials } from "../utils/livekit.js";
 import { broadcastPollLaunched, broadcastPollClosed, broadcastSessionEnded } from "../socket/live.handler.js";
+
+// Nigerian time, written the way people say it: "Fri 13 Nov, 6:00 pm"
+const formatClassTime = (date) =>
+  new Intl.DateTimeFormat("en-NG", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Africa/Lagos" }).format(new Date(date));
 import { notifyUsers } from "../utils/notify.js";
 
 // Allowed status moves for a live session. "live" normally happens when the host joins; "ended" is final.
@@ -148,7 +152,7 @@ export const createLiveSession = async (req, res, next) => {
 
     await notifyUsers(cohort.studentIds, {
       title: "New live class",
-      message: `"${session.title}" is scheduled for ${startsAt.toISOString()}.`,
+      message: `"${session.title}" is scheduled for ${formatClassTime(startsAt)}.`,
       type: "live_class_scheduled",
       link: "/lms/live-sessions",
     });
@@ -235,7 +239,7 @@ export const updateLiveSession = async (req, res, next) => {
       const cohort = await Cohort.findById(session.cohortId).select("studentIds");
       await notifyUsers(cohort?.studentIds, {
         title: "Live class rescheduled",
-        message: `"${session.title}" now starts ${new Date(session.startsAt).toISOString()}.`,
+        message: `"${session.title}" now starts ${formatClassTime(session.startsAt)}.`,
         type: "live_class_rescheduled",
         link: "/lms/live-sessions",
       });

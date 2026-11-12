@@ -4,6 +4,7 @@
 // It does a dry run by default and only deletes when you add --yes.
 //   MONGODB_URI="<your connection string>" node scripts/delete-tutor-courses.js jane.tutor@gloxad.com
 //   MONGODB_URI="<your connection string>" node scripts/delete-tutor-courses.js jane.tutor@gloxad.com --yes
+// Pass --all instead of an email to target every course on the platform (use it to clear demo content before launch).
 //
 // Cohorts (Trimester classes) that use these courses block the delete unless you also pass --with-cohorts,
 // which removes those cohorts and everything inside them (lessons progress, assignments, labs, live sessions, posts, enrolments).
@@ -39,27 +40,34 @@ import { LmsAttendance } from "../src/models/LmsAttendance.model.js";
 import { LmsPoll } from "../src/models/LmsPoll.model.js";
 import { LmsChatMessage } from "../src/models/LmsChatMessage.model.js";
 
-const email = (process.argv[2] || "").trim().toLowerCase();
+const allCourses = process.argv[2] === "--all";
+const email = allCourses ? "" : (process.argv[2] || "").trim().toLowerCase();
 const confirmed = process.argv.includes("--yes");
 const withCohorts = process.argv.includes("--with-cohorts");
 
 const run = async () => {
-  if (!email || email.startsWith("--")) throw new Error("Pass the tutor's email as the first argument");
+  if (!allCourses && (!email || email.startsWith("--"))) throw new Error("Pass the tutor's email, or --all, as the first argument");
   const connection = await connectDB();
   console.log(`Database host: ${connection.connection.host}`);
 
-  const tutor = await User.findOne({ email }).select("_id role email");
-  if (!tutor) throw new Error(`No account with email ${email}`);
-  if (tutor.role !== "instructor") throw new Error(`${email} is a ${tutor.role}, not a tutor`);
-
-  const courses = await Course.find({ instructor: tutor._id }).select("_id title status");
+  let courses;
+  if (allCourses) {
+    courses = await Course.find({}).select("_id title status instructor");
+  } else {
+    const tutor = await User.findOne({ email }).select("_id role email");
+    if (!tutor) throw new Error(`No account with email ${email}`);
+    if (tutor.role !== "instructor") throw new Error(`${email} is a ${tutor.role}, not a tutor`);
+    courses = await Course.find({ instructor: tutor._id }).select("_id title status instructor");
+  }
   if (courses.length === 0) {
-    console.log("This tutor has no courses. Nothing to do.");
+    console.log("There are no courses. Nothing to do.");
     return;
   }
   const ids = courses.map((course) => course._id);
-  console.log(`\n${courses.length} courses owned by ${email}:`);
-  courses.forEach((course) => console.log(`  - ${course.title} (${course.status})`));
+  const owners = await User.find({ _id: { $in: courses.map((course) => course.instructor) } }).select("email");
+  const ownerEmail = new Map(owners.map((owner) => [String(owner._id), owner.email]));
+  console.log(`\n${courses.length} courses${allCourses ? "" : ` owned by ${email}`}:`);
+  courses.forEach((course) => console.log(`  - ${course.title} (${course.status}) [${ownerEmail.get(String(course.instructor)) || "no owner"}]`));
 
   const cohorts = await Cohort.find({ courseId: { $in: ids } }).select("name courseId");
   if (cohorts.length > 0 && !withCohorts) {

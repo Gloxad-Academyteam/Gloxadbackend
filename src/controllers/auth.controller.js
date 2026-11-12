@@ -112,6 +112,8 @@ export const signup = async (req, res, next) => {
       role: user.role,
       tokenVersion: user.tokenVersion || 0,
     });
+    // Lets the activity log record who this was
+    req.user = user;
 
     return res.status(201).json({
       token,
@@ -169,6 +171,8 @@ export const signin = async (req, res, next) => {
       role: user.role,
       tokenVersion: user.tokenVersion || 0,
     });
+    // Lets the activity log record who this was
+    req.user = user;
 
     return res.status(200).json({
       token,

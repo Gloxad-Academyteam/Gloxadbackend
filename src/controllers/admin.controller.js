@@ -8,6 +8,7 @@ import Transaction from '../models/Transaction.model.js';
 import Category from '../models/Category.model.js';
 import Review from '../models/Review.model.js';
 import PlatformSettings from '../models/PlatformSettings.model.js';
+import { emailOptedInRecipients } from '../utils/notify.js';
 
 /**
  * 1. GET /api/admin/dashboard-stats
@@ -595,6 +596,7 @@ export const broadcastNotificationController = async (req, res, next) => {
       }));
 
       await Notification.insertMany(notificationDocs);
+      emailOptedInRecipients(targetUsers.map((u) => u._id), { title: title.trim(), message: message.trim(), link: link || null });
     }
 
     return res.status(201).json({

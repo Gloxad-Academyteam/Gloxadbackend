@@ -25,6 +25,8 @@ import { institutionContext } from "./middlewares/institution.middleware.js";
 import { renderApiDocs } from "./controllers/docs.controller.js";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { checkS3Readiness } from "./utils/s3.js";
+import { activityLogger } from "./middlewares/activity.middleware.js";
+import "./models/ActivityLog.model.js";
 
 // Ensure all Mongoose schemas are registered on startup
 import "./models/User.model.js";
@@ -94,6 +96,9 @@ app.use(
   })
 );
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+
+// Records every sign-in, change and failure for the admin activity view
+app.use(activityLogger);
 
 // Interactive HTML API Documentation Portal
 app.get("/", renderApiDocs);
