@@ -1,5 +1,19 @@
 import { LmsLab, LmsLabSubmission } from "../models/LmsLab.model.js";
+import mongoose from "mongoose";
 import { Cohort } from "../models/Cohort.model.js";
+
+const LANGUAGES = ["javascript", "typescript", "python", "html", "css", "sql"];
+const MAX_CODE_CHARS = 100000;
+
+/** Students of the cohort, its tutors and admins may use a lab. Before this check any signed-in user could. */
+const canUseLab = async (lab, user) => {
+  if (user.role === "admin") return true;
+  const cohort = await Cohort.findById(lab.cohortId).select("studentIds instructorIds");
+  const id = String(user._id);
+  return Boolean(cohort) && (cohort.studentIds.some((s) => String(s) === id) || cohort.instructorIds.some((i) => String(i) === id));
+};
+const denied = (res) => res.status(403).json({ error: "You are not enrolled in this cohort", code: "COHORT_ACCESS_DENIED" });
+const badId = (res) => res.status(400).json({ error: "Invalid lab ID format" });
 
 /**
  * GET /api/lms/cohorts/:cohortId/labs
@@ -53,10 +67,12 @@ export const getLabDetail = async (req, res, next) => {
     const { labId } = req.params;
     const userId = req.user._id;
 
+    if (!mongoose.isValidObjectId(labId)) return badId(res);
     const lab = await LmsLab.findById(labId).lean();
     if (!lab) {
       return res.status(404).json({ error: "Coding lab not found" });
     }
+    if (!(await canUseLab(lab, req.user))) return denied(res);
 
     const submission = await LmsLabSubmission.findOne({
       labId,
@@ -101,14 +117,17 @@ export const autosaveLabCode = async (req, res, next) => {
     const userId = req.user._id;
     const { code } = req.body;
 
+    if (!mongoose.isValidObjectId(labId)) return badId(res);
     if (typeof code !== "string") {
       return res.status(400).json({ error: "code string is required for autosave" });
     }
+    if (code.length > MAX_CODE_CHARS) return res.status(400).json({ error: `Code is too long (limit ${MAX_CODE_CHARS} characters)` });
 
     const lab = await LmsLab.findById(labId);
     if (!lab) {
       return res.status(404).json({ error: "Coding lab not found" });
     }
+    if (!(await canUseLab(lab, req.user))) return denied(res);
 
     const submission = await LmsLabSubmission.findOneAndUpdate(
       { labId, userId },
@@ -140,6 +159,11 @@ export const getLabDraft = async (req, res, next) => {
     const { labId } = req.params;
     const userId = req.user._id;
 
+    if (!mongoose.isValidObjectId(labId)) return badId(res);
+    const draftLab = await LmsLab.findById(labId).select("cohortId");
+    if (!draftLab) return res.status(404).json({ error: "Coding lab not found" });
+    if (!(await canUseLab(draftLab, req.user))) return denied(res);
+
     const submission = await LmsLabSubmission.findOne({ labId, userId });
     return res.status(200).json({
       draftCode: submission?.draftCode || "",
@@ -161,10 +185,13 @@ export const submitLab = async (req, res, next) => {
     const userId = req.user._id;
     const { code, passedTests, totalTests } = req.body;
 
+    if (!mongoose.isValidObjectId(labId)) return badId(res);
     const lab = await LmsLab.findById(labId);
     if (!lab) {
       return res.status(404).json({ error: "Coding lab not found" });
     }
+    if (!(await canUseLab(lab, req.user))) return denied(res);
+    if (typeof code === "string" && code.length > MAX_CODE_CHARS) return res.status(400).json({ error: `Code is too long (limit ${MAX_CODE_CHARS} characters)` });
 
     const submission = await LmsLabSubmission.findOneAndUpdate(
       { labId, userId },
@@ -199,7 +226,87 @@ export const submitLab = async (req, res, next) => {
   }
 };
 
+/** Checks the lab body shared by create and update. Returns { fields } or { error }. */
+const cleanLab = (body, partial) => {
+  const fields = {};
+  if (!partial || body.title !== undefined) {
+    if (!String(body.title ?? "").trim()) return { error: "title is required" };
+    fields.title = String(body.title).trim();
+  }
+  for (const key of ["description", "instructions", "starterCode"]) {
+    if (body[key] !== undefined) {
+      if (typeof body[key] !== "string" || body[key].length > MAX_CODE_CHARS) return { error: `${key} must be text of at most ${MAX_CODE_CHARS} characters` };
+      fields[key] = body[key];
+    }
+  }
+  if (body.language !== undefined) {
+    if (!LANGUAGES.includes(body.language)) return { error: `language must be one of: ${LANGUAGES.join(", ")}` };
+    fields.language = body.language;
+  }
+  if (body.dueAt !== undefined) {
+    const due = body.dueAt === null ? null : new Date(body.dueAt);
+    if (due !== null && Number.isNaN(due.getTime())) return { error: "dueAt must be a valid date" };
+    fields.dueAt = due;
+  }
+  if (body.testCases !== undefined) {
+    if (!Array.isArray(body.testCases) || body.testCases.length > 50) return { error: "testCases must be a list of at most 50 tests" };
+    const tests = [];
+    for (const test of body.testCases) {
+      const name = String(test?.name ?? "").trim();
+      if (!name || test?.expectedOutput === undefined) return { error: "Each test needs a name and an expectedOutput" };
+      tests.push({ name, input: String(test.input ?? ""), expectedOutput: String(test.expectedOutput), hidden: Boolean(test.hidden) });
+    }
+    fields.testCases = tests;
+  }
+  return { fields };
+};
+
+const canAuthor = (cohort, user) => user.role === "admin" || cohort.instructorIds.some((id) => String(id) === String(user._id));
+
+/**
+ * POST /api/lms/cohorts/:cohortId/labs  (tutor of the cohort or admin)
+ */
+export const createLab = async (req, res, next) => {
+  try {
+    const { cohortId } = req.params;
+    if (!mongoose.isValidObjectId(cohortId)) return res.status(400).json({ error: "Invalid cohort ID format" });
+    const cohort = await Cohort.findById(cohortId).select("instructorIds");
+    if (!cohort) return res.status(404).json({ error: "Cohort not found" });
+    if (!canAuthor(cohort, req.user)) return res.status(403).json({ error: "You are not assigned to this cohort", code: "COHORT_ACCESS_DENIED" });
+
+    const { fields, error } = cleanLab(req.body || {}, false);
+    if (error) return res.status(400).json({ error });
+    const lab = await LmsLab.create({ cohortId, ...fields });
+    return res.status(201).json({ lab: { _id: lab._id, title: lab.title, language: lab.language, testCount: lab.testCases.length } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/lms/labs/:labId  (tutor of the cohort or admin)
+ */
+export const updateLab = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.labId)) return badId(res);
+    const lab = await LmsLab.findById(req.params.labId);
+    if (!lab) return res.status(404).json({ error: "Coding lab not found" });
+    const cohort = await Cohort.findById(lab.cohortId).select("instructorIds");
+    if (!cohort || !canAuthor(cohort, req.user)) return res.status(403).json({ error: "You are not assigned to this cohort", code: "COHORT_ACCESS_DENIED" });
+
+    const { fields, error } = cleanLab(req.body || {}, true);
+    if (error) return res.status(400).json({ error });
+    Object.assign(lab, fields);
+    await lab.save();
+    return res.status(200).json({ lab: { _id: lab._id, title: lab.title, language: lab.language, testCount: lab.testCases.length } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
+  createLab,
+  updateLab,
   getCohortLabs,
   getLabDetail,
   autosaveLabCode,

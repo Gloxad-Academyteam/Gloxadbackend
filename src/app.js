@@ -79,6 +79,11 @@ app.use(
   })
 );
 
+// Coding labs carry code (up to 100000 characters), which does not fit the default 16kb body limit
+const CODE_ROUTES = /^\/api\/lms\/(labs(\/|$)|cohorts\/[^/]+\/labs$)/;
+const codeJson = express.json({ limit: "256kb" });
+app.use((req, res, next) => (CODE_ROUTES.test(req.path) ? codeJson(req, res, next) : next()));
+
 // Body parser middleware with 16kb limit & rawBody preservation for signature verification
 app.use(
   express.json({

@@ -83,16 +83,14 @@ const courseSchema = new mongoose.Schema(
       platform: {
         type: String,
         enum: ["youtube", "s3", "external", "vimeo"],
-        default: "youtube",
+        // A course made on Gloxad is hosted by Gloxad. Catalogue courses set their own source explicitly.
+        default: "s3",
         index: true
       },
-      creatorName: { type: String, default: "freeCodeCamp.org", trim: true },
-      creatorAvatar: {
-        type: String,
-        default: "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/logos/gloxad-logo.png",
-        trim: true
-      },
-      channelUrl: { type: String, default: "https://www.youtube.com/@freecodecamp", trim: true },
+      // No default creator: crediting freeCodeCamp to every course that did not name one was wrong for tutor-made courses
+      creatorName: { type: String, default: "", trim: true },
+      creatorAvatar: { type: String, default: "", trim: true },
+      channelUrl: { type: String, default: "", trim: true },
       url: { type: String, default: "", trim: true }
     },
     enrollmentOpen: {

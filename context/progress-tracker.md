@@ -618,6 +618,12 @@ Checked against this backend. Payment excluded by request.
 
 ---
 
+### Unit 29 (`29-coding-labs-access-and-authoring.md`) [COMPLETED & VERIFIED]
+- Lab detail, draft, autosave and submit now need cohort membership (any signed-in user could use any lab before); code limited to 100000 characters with a 256 KB body for lab routes (the app-wide limit stays 16 KB); new `POST /api/lms/cohorts/:cohortId/labs` and `PUT /api/lms/labs/:labId` for the cohort's tutors and admins (labs could only come from the seed script). Hidden tests never reveal expected output; results stay `unverified` until the Phase 5 runner. Docs: 2 cards and a Coding Labs sidebar group. `scripts/test-unit29-labs.js` 28/28.
+
+### Unit 24 addendum: live room support (for the frontend live room) [COMPLETED & VERIFIED]
+- `GET /api/lms/live-sessions/:id` (members and admins: session, host, `isHost`, polls with counts and the viewer's own vote), `POST /api/lms/polls/:pollId/close` (host or admin, `409 ALREADY_CLOSED`), cohort-membership check on `POST /api/lms/polls/:pollId/votes` (any signed-in user could vote in any poll before), and `session:ended` is now broadcast when a class is ended through `PUT /api/lms/live-sessions/:id`. Docs: 2 cards and a Live Room sidebar group. `scripts/test-unit24-live-classes.js` now 63/63.
+
 ### Unit 28 (`28-public-programme-landing.md`) [COMPLETED & VERIFIED]
 - Decision recorded: **only tutors can create Trimester courses** (`createCourseDraft` answers `403 TRIMESTER_COURSE_TUTOR_ONLY` to admins and everyone else who is not an instructor). Admins moderate the course and run the cohort that teaches it.
 - Public programme data now includes the course content: `thumbnail` (cover image from the course wizard), `trailerVideoUrl`, `level`, `language`, `skills`, `targetAudience`, `requirements`, `slug`. Missing content is `null` or an empty list.

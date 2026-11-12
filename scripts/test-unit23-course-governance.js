@@ -69,6 +69,7 @@ const run = async () => {
     const asTutor = await call("POST", "/tutor/courses", approved.token, trimesterBody);
     if (asTutor.data.course?._id) courseIds.push(asTutor.data.course._id);
     check("an approved tutor can", asTutor.status === 201 && asTutor.data.course.courseType === "trimester", asTutor.data);
+    check("the course is credited to the tutor, not to freeCodeCamp", asTutor.data.course?.source?.creatorName === "approved Unit23" && asTutor.data.course.source.platform === "s3" && asTutor.data.course.source.channelUrl === "", asTutor.data.course?.source);
     check("a student cannot (role 403)", (await call("POST", "/tutor/courses", student.token, trimesterBody)).status === 403);
     check("a pending tutor still cannot (approval gate first)", (await call("POST", "/tutor/courses", pending.token, trimesterBody)).data.code === "TUTOR_NOT_APPROVED");
     check("an admin may still create other course types", (await call("POST", "/tutor/courses", admin.token, { ...trimesterBody, courseType: "free" })).status === 201);

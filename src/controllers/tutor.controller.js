@@ -277,7 +277,15 @@ export const createCourseDraft = async (req, res, next) => {
       price: courseType === "free" ? 0 : Number(price) || 0,
       discountPrice: discountPrice ? Number(discountPrice) : 0,
       status: "draft",
-      instructor: req.user._id
+      instructor: req.user._id,
+      // The course is credited to the tutor who made it
+      source: {
+        platform: "s3",
+        creatorName: [req.user.firstName, req.user.lastName].filter(Boolean).join(" ").trim() || req.user.name || "Gloxad tutor",
+        creatorAvatar: req.user.avatarUrl || req.user.avatar || "",
+        channelUrl: "",
+        url: "",
+      },
     });
 
     return res.status(201).json({

@@ -14,6 +14,7 @@ import { Cohort } from "../src/models/Cohort.model.js";
 import { LmsLiveSession } from "../src/models/LmsLiveSession.model.js";
 import { LmsAttendance } from "../src/models/LmsAttendance.model.js";
 import { LmsChatMessage } from "../src/models/LmsChatMessage.model.js";
+import { LmsPoll } from "../src/models/LmsPoll.model.js";
 import { Notification } from "../src/models/Notification.model.js";
 import { generateToken } from "../src/utils/jwt.js";
 
@@ -148,11 +149,36 @@ const run = async () => {
     check("a scheduled class can be cancelled", (await call("DELETE", `/live-sessions/${byAdmin.data.session._id}`, admin.token)).status === 200);
     check("it is gone", (await LmsLiveSession.findById(byAdmin.data.session._id)) === null);
     check("another tutor cannot cancel someone else's class", (await call("DELETE", `/live-sessions/${defaultHost.data.session._id}`, otherTutor.token)).status === 403);
+
+    section("8. Reading one class and its polls, voting, closing a poll");
+    const pollSession = await call("POST", "/live-sessions", tutor.token, body({ title: "Poll class" }));
+    const pid = pollSession.data.session._id;
+    created.sessions.push(pid);
+    const one = await call("GET", `/live-sessions/${pid}`, alice.token);
+    check("a member reads one class with its host and no polls yet", one.status === 200 && one.data.session.title === "Poll class" && one.data.session.instructor.name === "tutor Unit24" && one.data.session.isHost === false && one.data.polls.length === 0, one.data);
+    check("the host sees isHost: true", (await call("GET", `/live-sessions/${pid}`, tutor.token)).data.session.isHost === true);
+    check("an outsider is refused", (await call("GET", `/live-sessions/${pid}`, outsider.token)).status === 403);
+    check("an invalid id is 400 and an unknown id is 404", (await call("GET", "/live-sessions/nope", alice.token)).status === 400 && (await call("GET", `/live-sessions/${new mongoose.Types.ObjectId()}`, alice.token)).status === 404);
+    const poll = await call("POST", `/live-sessions/${pid}/polls`, tutor.token, { question: "Which language?", options: ["JavaScript", "Python"] });
+    const pollId = poll.data.poll._id;
+    check("a student cannot launch a poll", (await call("POST", `/live-sessions/${pid}/polls`, alice.token, { question: "x", options: ["a", "b"] })).status === 403);
+    check("an outsider cannot vote", (await call("POST", `/polls/${pollId}/votes`, outsider.token, { optionIndex: 0 })).status === 403);
+    check("a member votes", (await call("POST", `/polls/${pollId}/votes`, alice.token, { optionIndex: 1 })).status === 200);
+    const results = (await call("GET", `/live-sessions/${pid}`, alice.token)).data.polls[0];
+    check("results show counts and my own vote", results.options[1].votes === 1 && results.totalVotes === 1 && results.myVote === 1 && results.status === "open", results);
+    check("another member's vote is not shown as mine", (await call("GET", `/live-sessions/${pid}`, bob.token)).data.polls[0].myVote === null);
+    check("a student cannot close a poll", (await call("POST", `/polls/${pollId}/close`, alice.token)).status === 403);
+    check("an unknown poll is 404", (await call("POST", `/polls/${new mongoose.Types.ObjectId()}/close`, tutor.token)).status === 404);
+    const closed = await call("POST", `/polls/${pollId}/close`, tutor.token);
+    check("the host closes the poll", closed.status === 200 && closed.data.poll.status === "closed", closed.data);
+    check("closing twice is 409 ALREADY_CLOSED", (await call("POST", `/polls/${pollId}/close`, tutor.token)).data.code === "ALREADY_CLOSED");
+    check("voting on a closed poll is 400", (await call("POST", `/polls/${pollId}/votes`, bob.token, { optionIndex: 0 })).status === 400);
   } catch (error) {
     failures += 1;
     console.error("Unexpected error:", error);
   } finally {
     await LmsAttendance.deleteMany({ cohortId: { $in: created.cohorts } });
+    await LmsPoll.deleteMany({ sessionId: { $in: created.sessions } });
     await LmsChatMessage.deleteMany({ sessionId: { $in: created.sessions } });
     await LmsLiveSession.deleteMany({ cohortId: { $in: created.cohorts } });
     await Notification.deleteMany({ recipient: { $in: created.users } });

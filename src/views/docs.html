@@ -1800,6 +1800,38 @@
       </div>
 
       <div class="nav-group">
+        <div class="nav-heading">Coding Labs</div>
+        <ul class="nav-list">
+          <li>
+            <a href="#ep-lab-create" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Create Lab
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lab-update" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Update Lab
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-heading">Live Room</div>
+        <ul class="nav-list">
+          <li>
+            <a href="#ep-live-session-one" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Live Session Detail
+            </a>
+          </li>
+          <li>
+            <a href="#ep-live-poll-close" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Close Poll
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
         <div class="nav-heading">Trimester Course Landing</div>
         <ul class="nav-list">
           <li>
@@ -10121,6 +10153,203 @@ Student ID,Full Name,Email,Quizzes (%),Assignments (%),Practicals (%),Coding Cha
           </div>
         </div>
 
+        <div class="endpoint-card" id="ep-live-session-one"
+          data-search="live session detail polls results my vote host">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/live-sessions/:id</span>
+              <span class="badge-guard"
+                style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Cohort member</span>
+            </div>
+            <p class="endpoint-desc">One live class with its host and every poll (counts and the viewer's own vote), so a student who joins late sees what already happened. <code>isHost</code> is true for the class's tutor and for admins. Cohort members and admins only (<code>403 COHORT_ACCESS_DENIED</code>). Real-time changes arrive on the <code>/live</code> Socket.io namespace (<code>chat:message</code>, <code>poll:launched</code>, <code>poll:closed</code>, <code>hand:raise</code>, <code>hand:lower</code>, <code>participants:update</code>, <code>session:ended</code>). The video room uses the LiveKit credentials from <code>POST /api/lms/live-sessions/:id/join</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "session": {
+    "_id": "6a0000000000000000000e01",
+    "cohortId": "6a0000000000000000000b01",
+    "cohortName": "Cohort Alpha",
+    "title": "Week 2 live class",
+    "description": "",
+    "startsAt": "2027-01-19T17:00:00.000Z",
+    "endsAt": "2027-01-19T19:00:00.000Z",
+    "endedAt": null,
+    "status": "scheduled",
+    "instructor": {
+      "_id": "6a0000000000000000000d01",
+      "name": "Jane Tutor"
+    },
+    "isHost": false
+  },
+  "polls": [
+    {
+      "_id": "6a0000000000000000000f31",
+      "question": "Which language?",
+      "status": "open",
+      "options": [
+        {
+          "index": 0,
+          "text": "JavaScript",
+          "votes": 4
+        },
+        {
+          "index": 1,
+          "text": "Python",
+          "votes": 7
+        }
+      ],
+      "totalVotes": 11,
+      "myVote": 1
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-live-poll-close"
+          data-search="live poll close host">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/polls/:pollId/close</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Host / Admin</span>
+            </div>
+            <p class="endpoint-desc">The class's tutor (or an admin) closes a poll and everyone in the room is told through <code>poll:closed</code>. Already closed: <code>409 ALREADY_CLOSED</code>. Voting (<code>POST /api/lms/polls/:pollId/votes</code>) now also needs cohort membership (<code>403</code>); one vote per person, none on a closed poll. Ending a class through <code>PUT /api/lms/live-sessions/:id</code> now broadcasts <code>session:ended</code> to the room.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Poll closed",
+  "poll": {
+    "_id": "6a0000000000000000000f31",
+    "question": "Which language?",
+    "status": "closed",
+    "options": [
+      {
+        "index": 0,
+        "text": "JavaScript",
+        "votes": 4
+      },
+      {
+        "index": 1,
+        "text": "Python",
+        "votes": 7
+      }
+    ],
+    "totalVotes": 11,
+    "myVote": 1
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lab-create"
+          data-search="create coding lab tutor admin test cases starter code">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/labs</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Tutor of the cohort / Admin</span>
+            </div>
+            <p class="endpoint-desc">Creates a coding lab for a cohort. The cohort's tutors and admins only (<code>403</code> otherwise). <code>language</code> is one of javascript, typescript, python, html, css, sql. Up to 50 <code>testCases</code> (<code>name</code>, <code>input</code>, <code>expectedOutput</code>, <code>hidden</code>); hidden tests never reveal their expected output to students. Code fields are limited to 100000 characters; lab routes accept a 256 KB body. Reading, drafting, autosaving and submitting a lab now need cohort membership (<code>403 COHORT_ACCESS_DENIED</code>). Results are stored with <code>unverified: true</code> because the browser runs the tests.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "title": "Sum of two numbers",
+  "description": "Add two numbers.",
+  "instructions": "Read two numbers and print their sum.",
+  "language": "javascript",
+  "starterCode": "// read input, print the sum\n",
+  "dueAt": "2027-02-01T00:00:00.000Z",
+  "testCases": [
+    {
+      "name": "2 + 3",
+      "input": "2 3",
+      "expectedOutput": "5"
+    },
+    {
+      "name": "secret",
+      "input": "10 20",
+      "expectedOutput": "30",
+      "hidden": true
+    }
+  ]
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "lab": {
+    "_id": "6a0000000000000000000f41",
+    "title": "Sum of two numbers",
+    "language": "javascript",
+    "testCount": 2
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lab-update"
+          data-search="update coding lab tutor admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/labs/:labId</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Tutor of the cohort / Admin</span>
+            </div>
+            <p class="endpoint-desc">Updates any of the lab fields above. Same permissions and limits as creating.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "title": "Sum of two numbers",
+  "description": "Add two numbers.",
+  "instructions": "Read two numbers and print their sum.",
+  "language": "javascript",
+  "starterCode": "// read input, print the sum\n",
+  "dueAt": "2027-02-01T00:00:00.000Z",
+  "testCases": [
+    {
+      "name": "2 + 3",
+      "input": "2 3",
+      "expectedOutput": "5"
+    },
+    {
+      "name": "secret",
+      "input": "10 20",
+      "expectedOutput": "30",
+      "hidden": true
+    }
+  ]
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>200 OK</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "lab": {
+    "_id": "6a0000000000000000000f41",
+    "title": "Sum of two numbers",
+    "language": "javascript",
+    "testCount": 2
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
         <!-- ============================================================== -->
         <!-- SECTION 28: PUBLIC LANDING PAGE FOR A TRIMESTER COURSE         -->
         <!-- ============================================================== -->
@@ -12297,6 +12526,10 @@ student2@partner.edu,Jane,Smith,ENG/2026/002,650000000000000000000010,Informatio
         <li><a href="#ep-trimester-public-list" class="toc-link">GET /api/lms/public/trimesters</a></li>
         <li><a href="#ep-trimester-public-detail" class="toc-link">GET /api/lms/public/trimesters/:id</a></li>
         <li><a href="#ep-cohort-enrol" class="toc-link">POST /api/lms/cohorts/:cohortId/enrol</a></li>
+        <li><a href="#ep-lab-create" class="toc-link">POST /api/lms/cohorts/:cohortId/labs</a></li>
+        <li><a href="#ep-lab-update" class="toc-link">PUT /api/lms/labs/:labId</a></li>
+        <li><a href="#ep-live-session-one" class="toc-link">GET /api/lms/live-sessions/:id</a></li>
+        <li><a href="#ep-live-poll-close" class="toc-link">POST /api/lms/polls/:pollId/close</a></li>
         <li><a href="#programme-landing" class="toc-link">Trimester Course Landing</a></li>
         <li><a href="#ep-public-programme" class="toc-link">GET /api/lms/public/programmes/:cohortId</a></li>
         <li><a href="#engagement-certificates" class="toc-link">Engagement &amp; Certificates</a></li>

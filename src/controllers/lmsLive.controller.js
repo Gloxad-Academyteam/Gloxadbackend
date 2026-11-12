@@ -5,7 +5,7 @@ import { LmsPoll } from "../models/LmsPoll.model.js";
 import { LmsChatMessage } from "../models/LmsChatMessage.model.js";
 import { Cohort } from "../models/Cohort.model.js";
 import { generateLiveKitCredentials } from "../utils/livekit.js";
-import { broadcastPollLaunched } from "../socket/live.handler.js";
+import { broadcastPollLaunched, broadcastPollClosed, broadcastSessionEnded } from "../socket/live.handler.js";
 import { notifyUsers } from "../utils/notify.js";
 
 // Allowed status moves for a live session. "live" normally happens when the host joins; "ended" is final.
@@ -225,7 +225,11 @@ export const updateLiveSession = async (req, res, next) => {
     }
 
     await session.save();
-    if (ended) await closeOpenAttendance(session, session.endedAt);
+    if (ended) {
+      await closeOpenAttendance(session, session.endedAt);
+      // Tell everyone in the room, so their screens leave the class without a refresh
+      broadcastSessionEnded(String(session._id));
+    }
 
     if (timeChange) {
       const cohort = await Cohort.findById(session.cohortId).select("studentIds");
@@ -482,6 +486,12 @@ export const votePoll = async (req, res, next) => {
       return res.status(404).json({ error: "Poll not found" });
     }
 
+    const pollSession = await LmsLiveSession.findById(poll.sessionId).select("cohortId");
+    const pollCohort = pollSession ? await Cohort.findById(pollSession.cohortId).select("studentIds instructorIds") : null;
+    if (!pollCohort || !isMember(pollCohort, req.user)) {
+      return res.status(403).json({ error: "You are not enrolled in this live classroom cohort", code: "COHORT_ACCESS_DENIED" });
+    }
+
     if (poll.status !== "open") {
       return res.status(400).json({ error: "This poll is closed for voting" });
     }
@@ -697,4 +707,84 @@ export default {
   votePoll,
   getSessionAttendance,
   updateSessionAttendance,
+};
+
+const pollView = (poll, userId) => {
+  const counts = poll.options.map(() => 0);
+  let myVote = null;
+  for (const vote of poll.votes ?? []) {
+    if (counts[vote.optionIndex] !== undefined) counts[vote.optionIndex] += 1;
+    if (String(vote.userId) === String(userId)) myVote = vote.optionIndex;
+  }
+  return {
+    _id: poll._id,
+    question: poll.question,
+    status: poll.status,
+    options: poll.options.map((text, index) => ({ index, text, votes: counts[index] })),
+    totalVotes: (poll.votes ?? []).length,
+    myVote,
+  };
+};
+
+/**
+ * GET /api/lms/live-sessions/:id
+ * One class with its polls (results and the viewer's own vote), so a student who joins late sees what already happened.
+ */
+export const getLiveSession = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid session ID format" });
+    const session = await LmsLiveSession.findById(req.params.id).populate("instructorId", "firstName lastName avatarUrl");
+    if (!session) return res.status(404).json({ error: "Live session not found" });
+
+    const cohort = await Cohort.findById(session.cohortId).select("name studentIds instructorIds");
+    if (!cohort || !isMember(cohort, req.user)) {
+      return res.status(403).json({ error: "You are not enrolled in this live classroom cohort", code: "COHORT_ACCESS_DENIED" });
+    }
+
+    const polls = await LmsPoll.find({ sessionId: session._id }).sort({ createdAt: 1 });
+    const host = session.instructorId;
+    return res.status(200).json({
+      session: {
+        _id: session._id,
+        cohortId: session.cohortId,
+        cohortName: cohort.name,
+        title: session.title,
+        description: session.description,
+        startsAt: session.startsAt,
+        endsAt: session.endsAt,
+        endedAt: session.endedAt ?? null,
+        status: session.status,
+        instructor: host ? { _id: host._id, name: [host.firstName, host.lastName].filter(Boolean).join(" ") || "Tutor" } : null,
+        isHost: String(host?._id ?? session.instructorId) === String(req.user._id) || req.user.role === "admin",
+      },
+      polls: polls.map((poll) => pollView(poll, req.user._id)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/lms/polls/:pollId/close
+ * The host (or an admin) closes a poll; everyone in the room is told.
+ */
+export const closePoll = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.pollId)) return res.status(400).json({ error: "Invalid poll ID format" });
+    const poll = await LmsPoll.findById(req.params.pollId);
+    if (!poll) return res.status(404).json({ error: "Poll not found" });
+
+    const session = await LmsLiveSession.findById(poll.sessionId).select("instructorId");
+    const isHost = session && (String(session.instructorId) === String(req.user._id) || req.user.role === "admin");
+    if (!isHost) return res.status(403).json({ error: "Only the host can close a poll" });
+    if (poll.status === "closed") return res.status(409).json({ error: "This poll is already closed", code: "ALREADY_CLOSED" });
+
+    poll.status = "closed";
+    await poll.save();
+    const view = pollView(poll, req.user._id);
+    broadcastPollClosed(String(poll.sessionId), { ...view, sessionId: poll.sessionId });
+    return res.status(200).json({ message: "Poll closed", poll: view });
+  } catch (error) {
+    next(error);
+  }
 };

@@ -82,6 +82,8 @@ import {
   autosaveLabCode,
   getLabDraft,
   submitLab,
+  createLab,
+  updateLab,
 } from "../controllers/lmsLab.controller.js";
 import {
   getStudentFinalProject,
@@ -114,6 +116,8 @@ import {
   votePoll,
   getSessionAttendance,
   updateSessionAttendance,
+  getLiveSession,
+  closePoll,
 } from "../controllers/lmsLive.controller.js";
 import {
   getChannels,
@@ -194,6 +198,8 @@ router.put("/submissions/:id/grade", authGuard, cohortGuard, gradeSubmission);
 
 // 6. Coding Labs & Autosave Engine
 router.get("/cohorts/:cohortId/labs", authGuard, cohortGuard, getCohortLabs);
+router.post("/cohorts/:cohortId/labs", authGuard, roleGuard("instructor"), createLab);
+router.put("/labs/:labId", authGuard, roleGuard("instructor"), updateLab);
 router.get("/labs/:labId", authGuard, getLabDetail);
 router.put("/labs/:labId/autosave", authGuard, autosaveLabCode);
 router.get("/labs/:labId/draft", authGuard, getLabDraft);
@@ -230,11 +236,13 @@ router.get("/live-sessions", authGuard, getLiveSessions);
 router.post("/live-sessions", authGuard, roleGuard("instructor"), createLiveSession);
 router.put("/live-sessions/:id", authGuard, roleGuard("instructor"), updateLiveSession);
 router.delete("/live-sessions/:id", authGuard, roleGuard("instructor"), deleteLiveSession);
+router.get("/live-sessions/:id", authGuard, getLiveSession);
 router.post("/live-sessions/:id/join", authGuard, joinLiveSession);
 router.post("/live-sessions/:id/leave", authGuard, leaveLiveSession);
 router.get("/live-sessions/:id/chat", authGuard, getSessionChatHistory);
 router.post("/live-sessions/:id/polls", authGuard, roleGuard("instructor"), createSessionPoll);
 router.post("/polls/:pollId/votes", authGuard, votePoll);
+router.post("/polls/:pollId/close", authGuard, closePoll);
 router.get("/live-sessions/:id/attendance", authGuard, roleGuard("instructor"), getSessionAttendance);
 router.put("/live-sessions/:id/attendance", authGuard, roleGuard("instructor"), updateSessionAttendance);
 
