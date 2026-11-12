@@ -2,7 +2,36 @@ import { Router } from "express";
 import { authGuard } from "../middlewares/auth.middleware.js";
 import { roleGuard } from "../middlewares/role.middleware.js";
 import { cohortGuard } from "../middlewares/cohort.middleware.js";
+import { optionalAuthMiddleware } from "../middlewares/optionalAuth.middleware.js";
 import { forumPostLimiter } from "../middlewares/rateLimiter.middleware.js";
+
+// Unit 25 Controllers
+import {
+  createScholarship,
+  listScholarshipsAdmin,
+  updateScholarship,
+  listApplicationsAdmin,
+  setApplicationStatus,
+  getPublicScholarships,
+  applyToScholarship,
+  getMyApplications,
+  withdrawApplication,
+} from "../controllers/lmsScholarship.controller.js";
+
+// Unit 21 Controllers
+import {
+  createTrimester,
+  listTrimesters,
+  updateTrimester,
+  createCohort,
+  listCohorts,
+  updateCohort,
+  addCohortStudent,
+  removeCohortStudent,
+  getPublicTrimesters,
+  getPublicTrimester,
+  enrolInCohort,
+} from "../controllers/lmsTrimester.controller.js";
 
 // Unit 19 Controllers
 import {
@@ -230,5 +259,35 @@ router.get("/instructor/cohorts/:id/overview", authGuard, roleGuard("instructor"
 router.get("/instructor/cohorts/:id/roster", authGuard, roleGuard("instructor"), getCohortRoster);
 router.get("/admin/analytics", authGuard, roleGuard("admin"), getAdminAnalytics);
 router.get("/admin/certificates/recent", authGuard, roleGuard("admin"), getRecentCertificates);
+
+// ==========================================
+// Unit 21: Trimester Administration & Programme Enrolment
+// ==========================================
+router.get("/public/trimesters", optionalAuthMiddleware, getPublicTrimesters);
+router.get("/public/trimesters/:id", optionalAuthMiddleware, getPublicTrimester);
+router.post("/cohorts/:cohortId/enrol", authGuard, enrolInCohort);
+
+router.post("/admin/trimesters", authGuard, roleGuard("admin"), createTrimester);
+router.get("/admin/trimesters", authGuard, roleGuard("admin"), listTrimesters);
+router.put("/admin/trimesters/:id", authGuard, roleGuard("admin"), updateTrimester);
+router.post("/admin/cohorts", authGuard, roleGuard("admin"), createCohort);
+router.get("/admin/cohorts", authGuard, roleGuard("admin"), listCohorts);
+router.put("/admin/cohorts/:id", authGuard, roleGuard("admin"), updateCohort);
+router.post("/admin/cohorts/:id/students", authGuard, roleGuard("admin"), addCohortStudent);
+router.delete("/admin/cohorts/:id/students/:userId", authGuard, roleGuard("admin"), removeCohortStudent);
+
+// ==========================================
+// Unit 25: Scholarships
+// ==========================================
+router.get("/public/scholarships", optionalAuthMiddleware, getPublicScholarships);
+router.post("/scholarships/:id/applications", authGuard, applyToScholarship);
+router.get("/scholarships/applications/me", authGuard, getMyApplications);
+router.put("/scholarship-applications/:id/withdraw", authGuard, withdrawApplication);
+
+router.post("/admin/scholarships", authGuard, roleGuard("admin"), createScholarship);
+router.get("/admin/scholarships", authGuard, roleGuard("admin"), listScholarshipsAdmin);
+router.put("/admin/scholarships/:id", authGuard, roleGuard("admin"), updateScholarship);
+router.get("/admin/scholarships/:id/applications", authGuard, roleGuard("admin"), listApplicationsAdmin);
+router.put("/admin/scholarship-applications/:id/status", authGuard, roleGuard("admin"), setApplicationStatus);
 
 export default router;

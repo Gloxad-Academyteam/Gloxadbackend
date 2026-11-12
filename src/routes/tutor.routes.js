@@ -14,7 +14,7 @@ import {
   replyToReviewController,
 } from "../controllers/tutor.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
-import { roleMiddleware } from "../middlewares/role.middleware.js";
+import { roleMiddleware, approvedTutorGuard } from "../middlewares/role.middleware.js";
 
 const router = Router();
 
@@ -32,12 +32,12 @@ router.get("/reviews", roleMiddleware("instructor"), getTutorReviewsController);
 router.post("/reviews/:id/reply", roleMiddleware("instructor"), replyToReviewController);
 
 // Course Authoring Wizard & Review Pipeline
-router.post("/courses", roleMiddleware("instructor"), createCourseDraft);
+router.post("/courses", roleMiddleware("instructor"), approvedTutorGuard, createCourseDraft);
 router.get("/courses", roleMiddleware("instructor"), getInstructorCourses);
 router.get("/courses/:id", roleMiddleware("instructor"), getInstructorCourseById);
-router.put("/courses/:id", roleMiddleware("instructor"), updateCourseDraft);
-router.post("/courses/:id/submit", roleMiddleware("instructor"), submitCourseForReview);
-router.post("/courses/:id/appeal", roleMiddleware("instructor"), appealCourseRejection);
+router.put("/courses/:id", roleMiddleware("instructor"), approvedTutorGuard, updateCourseDraft);
+router.post("/courses/:id/submit", roleMiddleware("instructor"), approvedTutorGuard, submitCourseForReview);
+router.post("/courses/:id/appeal", roleMiddleware("instructor"), approvedTutorGuard, appealCourseRejection);
 
 export default router;
 

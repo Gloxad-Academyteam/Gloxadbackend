@@ -29,6 +29,26 @@ const TrimesterSchema = new Schema(
       type: Date,
       required: true,
     },
+    enrollmentOpensAt: {
+      type: Date,
+      default: null,
+    },
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    // Hides the Trimester from new learners without deleting anything. Null means not archived.
+    archivedAt: {
+      type: Date,
+      default: null,
+    },
+    // Only published Trimesters appear on the public routes
+    isPublished: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     status: {
       type: String,
       enum: ["upcoming", "active", "completed"],

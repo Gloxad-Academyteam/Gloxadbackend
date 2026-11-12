@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { LmsLiveSession } from "../models/LmsLiveSession.model.js";
 import { LmsAttendance } from "../models/LmsAttendance.model.js";
 import { LmsPoll } from "../models/LmsPoll.model.js";
@@ -5,6 +6,30 @@ import { LmsChatMessage } from "../models/LmsChatMessage.model.js";
 import { Cohort } from "../models/Cohort.model.js";
 import { generateLiveKitCredentials } from "../utils/livekit.js";
 import { broadcastPollLaunched } from "../socket/live.handler.js";
+import { notifyUsers } from "../utils/notify.js";
+
+// Allowed status moves for a live session. "live" normally happens when the host joins; "ended" is final.
+const STATUS_MOVES = { scheduled: ["live", "ended"], live: ["ended"], ended: [] };
+const SESSION_STATUSES = Object.keys(STATUS_MOVES);
+
+const isMember = (cohort, user) => {
+  const id = String(user._id);
+  return (
+    user.role === "admin" ||
+    cohort.studentIds.some((s) => String(s) === id) ||
+    cohort.instructorIds.some((i) => String(i) === id)
+  );
+};
+
+/** Closes every attendance record still open when a class ends, so attendance does not depend on students pressing Leave. */
+const closeOpenAttendance = async (session, endedAt) => {
+  const open = await LmsAttendance.find({ sessionId: session._id, joinedAt: { $ne: null }, leftAt: null });
+  for (const attendance of open) {
+    attendance.leftAt = endedAt;
+    attendance.durationMinutes = Math.max(1, Math.round((endedAt.getTime() - new Date(attendance.joinedAt).getTime()) / 60000));
+    await attendance.save();
+  }
+};
 
 /**
  * GET /api/lms/live-sessions
@@ -16,6 +41,12 @@ export const getLiveSessions = async (req, res, next) => {
     let filter = {};
 
     if (cohortId) {
+      if (!mongoose.isValidObjectId(cohortId)) return res.status(400).json({ error: "Invalid cohort ID format" });
+      const requested = await Cohort.findById(cohortId).select("studentIds instructorIds");
+      if (!requested) return res.status(404).json({ error: "Cohort not found" });
+      if (!isMember(requested, req.user)) {
+        return res.status(403).json({ error: "You are not enrolled in this cohort", code: "COHORT_ACCESS_DENIED" });
+      }
       filter.cohortId = cohortId;
     } else {
       // Find user cohorts
@@ -64,41 +95,62 @@ export const getLiveSessions = async (req, res, next) => {
  */
 export const createLiveSession = async (req, res, next) => {
   try {
-    const { cohortId, title, description, startsAt, endsAt } = req.body;
-
-    if (!cohortId || !title || !startsAt || !endsAt) {
-      return res.status(400).json({
-        error: "cohortId, title, startsAt, and endsAt are required",
-      });
+    const { cohortId, title, description } = req.body || {};
+    if (!cohortId || !title || !req.body?.startsAt || !req.body?.endsAt) {
+      return res.status(400).json({ error: "cohortId, title, startsAt, and endsAt are required" });
     }
+    if (!mongoose.isValidObjectId(cohortId)) return res.status(400).json({ error: "Invalid cohort ID format" });
+
+    // Times are stored in UTC. Anything the client sends is parsed to an absolute instant.
+    const startsAt = new Date(req.body.startsAt);
+    const endsAt = new Date(req.body.endsAt);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      return res.status(400).json({ error: "startsAt and endsAt must be valid dates" });
+    }
+    if (endsAt <= startsAt) return res.status(400).json({ error: "endsAt must be after startsAt" });
+    if (startsAt <= new Date()) return res.status(400).json({ error: "A live class must start in the future" });
 
     const cohort = await Cohort.findById(cohortId);
     if (!cohort) {
       return res.status(404).json({ error: "Cohort not found" });
     }
 
-    // Verify instructor authorization
-    const isInstructor =
-      cohort.instructorIds.some((id) => id.toString() === req.user._id.toString()) ||
-      req.user.role === "admin";
-    if (!isInstructor) {
-      return res.status(403).json({
-        error: "You are not authorized to schedule live sessions for this cohort",
-      });
+    const isAssignedTutor = cohort.instructorIds.some((id) => id.toString() === req.user._id.toString());
+    const isAdmin = req.user.role === "admin";
+    if (!isAssignedTutor && !isAdmin) {
+      return res.status(403).json({ error: "You are not authorized to schedule live sessions for this cohort" });
+    }
+
+    // A tutor hosts their own class. An admin schedules on behalf of one of the cohort's tutors.
+    let instructorId = req.user._id;
+    if (isAdmin && !isAssignedTutor) {
+      const requested = req.body.instructorId ?? cohort.instructorIds[0];
+      if (!requested) return res.status(422).json({ error: "This cohort has no tutor. Assign a tutor before scheduling a class." });
+      if (!cohort.instructorIds.some((id) => id.toString() === String(requested))) {
+        return res.status(422).json({ error: "The host must be a tutor assigned to this cohort" });
+      }
+      instructorId = requested;
     }
 
     const roomName = `cohort-${cohortId}-${Date.now()}`;
 
     const session = await LmsLiveSession.create({
       cohortId,
-      title: title.trim(),
+      title: String(title).trim(),
       description: (description || "").trim(),
-      instructorId: req.user._id,
-      startsAt: new Date(startsAt),
-      endsAt: new Date(endsAt),
+      instructorId,
+      startsAt,
+      endsAt,
       status: "scheduled",
       provider: "livekit",
       roomName,
+    });
+
+    await notifyUsers(cohort.studentIds, {
+      title: "New live class",
+      message: `"${session.title}" is scheduled for ${startsAt.toISOString()}.`,
+      type: "live_class_scheduled",
+      link: "/lms/live-sessions",
     });
 
     return res.status(201).json({
@@ -116,6 +168,7 @@ export const createLiveSession = async (req, res, next) => {
  */
 export const updateLiveSession = async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid session ID format" });
     const session = await LmsLiveSession.findById(req.params.id);
     if (!session) {
       return res.status(404).json({ error: "Live session not found" });
@@ -130,16 +183,59 @@ export const updateLiveSession = async (req, res, next) => {
       });
     }
 
-    const { title, description, startsAt, endsAt, status, recordingUrl } = req.body;
+    const { title, description, status, recordingUrl } = req.body || {};
+    const timeChange = req.body?.startsAt !== undefined || req.body?.endsAt !== undefined;
 
-    if (title) session.title = title.trim();
-    if (description !== undefined) session.description = description.trim();
-    if (startsAt) session.startsAt = new Date(startsAt);
-    if (endsAt) session.endsAt = new Date(endsAt);
-    if (status) session.status = status;
-    if (recordingUrl !== undefined) session.recordingUrl = recordingUrl.trim();
+    if (status !== undefined) {
+      if (!SESSION_STATUSES.includes(status)) {
+        return res.status(400).json({ error: `status must be one of: ${SESSION_STATUSES.join(", ")}` });
+      }
+      if (status !== session.status && !STATUS_MOVES[session.status].includes(status)) {
+        return res.status(409).json({ error: `A session that is ${session.status} cannot become ${status}`, code: "INVALID_TRANSITION", allowed: STATUS_MOVES[session.status] });
+      }
+    }
+
+    if (timeChange) {
+      // Countdown, join window and attendance window all come from these two times, so they move together
+      if (session.status !== "scheduled") {
+        return res.status(409).json({ error: "Only a class that has not started can be rescheduled", code: "SESSION_LOCKED" });
+      }
+      const startsAt = req.body.startsAt !== undefined ? new Date(req.body.startsAt) : session.startsAt;
+      const endsAt = req.body.endsAt !== undefined ? new Date(req.body.endsAt) : session.endsAt;
+      if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+        return res.status(400).json({ error: "startsAt and endsAt must be valid dates" });
+      }
+      if (endsAt <= startsAt) return res.status(400).json({ error: "endsAt must be after startsAt" });
+      if (startsAt <= new Date()) return res.status(400).json({ error: "A live class must start in the future" });
+      session.startsAt = startsAt;
+      session.endsAt = endsAt;
+    }
+
+    if (title) session.title = String(title).trim();
+    if (description !== undefined) session.description = String(description).trim();
+    if (recordingUrl !== undefined) session.recordingUrl = String(recordingUrl).trim();
+
+    let ended = false;
+    if (status && status !== session.status) {
+      session.status = status;
+      if (status === "ended") {
+        session.endedAt = new Date();
+        ended = true;
+      }
+    }
 
     await session.save();
+    if (ended) await closeOpenAttendance(session, session.endedAt);
+
+    if (timeChange) {
+      const cohort = await Cohort.findById(session.cohortId).select("studentIds");
+      await notifyUsers(cohort?.studentIds, {
+        title: "Live class rescheduled",
+        message: `"${session.title}" now starts ${new Date(session.startsAt).toISOString()}.`,
+        type: "live_class_rescheduled",
+        link: "/lms/live-sessions",
+      });
+    }
 
     return res.status(200).json({
       message: "Live session updated successfully",
@@ -168,6 +264,10 @@ export const deleteLiveSession = async (req, res, next) => {
       return res.status(403).json({
         error: "You are not authorized to cancel this session",
       });
+    }
+
+    if (session.status !== "scheduled") {
+      return res.status(409).json({ error: "Only a class that has not started can be cancelled", code: "SESSION_LOCKED" });
     }
 
     await LmsLiveSession.findByIdAndDelete(req.params.id);
@@ -214,7 +314,6 @@ export const joinLiveSession = async (req, res, next) => {
 
     const now = new Date();
     const startsAtMs = new Date(session.startsAt).getTime();
-    const endsAtMs = new Date(session.endsAt).getTime();
     const tenMinutesBeforeMs = startsAtMs - 10 * 60 * 1000;
 
     // For students, enforce the 10-minute join window
@@ -224,11 +323,11 @@ export const joinLiveSession = async (req, res, next) => {
           error: "Live classroom join opens 10 minutes prior to session start",
         });
       }
-      if (now.getTime() > endsAtMs && session.status === "ended") {
-        return res.status(400).json({
-          error: "This live session has already ended",
-        });
-      }
+    }
+    if (session.status === "ended") {
+      return res.status(400).json({
+        error: "This live session has already ended",
+      });
     }
 
     // Generate cryptographic LiveKit room credentials
@@ -260,6 +359,8 @@ export const joinLiveSession = async (req, res, next) => {
       if (!attendance.joinedAt) {
         attendance.joinedAt = now;
       }
+      // Coming back after leaving: the person is in the room again
+      attendance.leftAt = null;
       await attendance.save();
     }
 
@@ -283,6 +384,14 @@ export const getSessionChatHistory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { limit = 50, before } = req.query;
+
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid session ID format" });
+    const chatSession = await LmsLiveSession.findById(id).select("cohortId");
+    if (!chatSession) return res.status(404).json({ error: "Live session not found" });
+    const chatCohort = await Cohort.findById(chatSession.cohortId).select("studentIds instructorIds");
+    if (!chatCohort || !isMember(chatCohort, req.user)) {
+      return res.status(403).json({ error: "You are not enrolled in this live classroom cohort", code: "COHORT_ACCESS_DENIED" });
+    }
 
     const query = { sessionId: id };
     if (before) {

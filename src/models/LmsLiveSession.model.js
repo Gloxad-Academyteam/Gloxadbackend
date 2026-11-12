@@ -39,6 +39,11 @@ const LmsLiveSessionSchema = new Schema(
       default: "scheduled",
       index: true,
     },
+    // Set when the class is ended, by the tutor or an admin
+    endedAt: {
+      type: Date,
+      default: null,
+    },
     provider: {
       type: String,
       default: "livekit",

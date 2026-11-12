@@ -1739,6 +1739,118 @@
       </div>
 
       <div class="nav-group">
+        <div class="nav-heading">Trimester Admin & Enrolment</div>
+        <ul class="nav-list">
+          <li>
+            <a href="#ep-trimester-create" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Create Trimester
+            </a>
+          </li>
+          <li>
+            <a href="#ep-trimester-list-admin" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> List Trimesters
+            </a>
+          </li>
+          <li>
+            <a href="#ep-trimester-update" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Update Trimester
+            </a>
+          </li>
+          <li>
+            <a href="#ep-cohort-create" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Create Cohort
+            </a>
+          </li>
+          <li>
+            <a href="#ep-cohort-list-admin" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> List Cohorts
+            </a>
+          </li>
+          <li>
+            <a href="#ep-cohort-update" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Update Cohort
+            </a>
+          </li>
+          <li>
+            <a href="#ep-cohort-add-student" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Add Student
+            </a>
+          </li>
+          <li>
+            <a href="#ep-cohort-remove-student" class="nav-link">
+              <span class="nav-method-pill pill-delete">DELETE</span> Remove Student
+            </a>
+          </li>
+          <li>
+            <a href="#ep-trimester-public-list" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Public Trimesters
+            </a>
+          </li>
+          <li>
+            <a href="#ep-trimester-public-detail" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Public Trimester Detail
+            </a>
+          </li>
+          <li>
+            <a href="#ep-cohort-enrol" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Enrol in Programme
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-heading">Scholarships</div>
+        <ul class="nav-list">
+          <li>
+            <a href="#ep-scholarship-create" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Create Scholarship
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-list-admin" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> List Scholarships
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-update" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Update / Publish Scholarship
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-applications-admin" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Review Applications
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-application-status" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Decide Application
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-public-list" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Public Scholarships
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-apply" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Apply for Scholarship
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-my-applications" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> My Applications
+            </a>
+          </li>
+          <li>
+            <a href="#ep-scholarship-withdraw" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Withdraw Application
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
         <div class="nav-heading">LMS Live, Community & Certificates</div>
         <ul class="nav-list">
           <li>
@@ -4136,7 +4248,10 @@ Accept: application/json</code></pre>
         </div>
         <div class="endpoint-content">
           <div class="endpoint-desc">
-            Step 1: Initializes a new course draft record with basic info (title, category, courseType) and assigns
+            <b>Approval required.</b> <code>POST</code>, <code>PUT</code>, <code>/submit</code> and <code>/appeal</code> on
+            <code>/api/tutor/courses</code> answer <code>403 TUTOR_NOT_APPROVED</code> (with the tutor's current
+            <code>approvalStatus</code>) unless an admin has approved the tutor. Students get <code>403</code>; admins may author.
+            <br>Step 1: Initializes a new course draft record with basic info (title, category, courseType) and assigns
             <code>status: "draft"</code>, auto-generating a clean unique slug.
           </div>
 
@@ -9456,6 +9571,917 @@ Student ID,Full Name,Email,Quizzes (%),Assignments (%),Practicals (%),Coding Cha
 
 
         <!-- ============================================================== -->
+        <!-- SECTION 21: TRIMESTER ADMINISTRATION & PROGRAMME ENROLMENT     -->
+        <!-- ============================================================== -->
+        <section class="doc-section" id="trimester-administration-enrolment">
+          <h2 class="section-title">21. Trimester Administration & Programme Enrolment</h2>
+          <p class="section-lead">
+            Admins create and publish Trimesters, run cohorts (programmes) inside them, assign approved tutors and manage
+            rosters. Anyone can browse published Trimesters; a signed-in student can enrol in an open, free programme.
+            Enrolment state and seat counts are always computed on the server. Paid programmes return
+            <code>409 PAYMENT_REQUIRED</code> until checkout is added; an admin can still sponsor a seat.
+          </p>
+        </section>
+
+        <div class="endpoint-card" id="ep-trimester-create"
+          data-search="trimester create admin term dates enrolment window">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/admin/trimesters</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Creates a Trimester (a 12-week term). It starts unpublished with status <code>upcoming</code>, so it stays hidden from the public routes until an admin publishes it. Dates are validated: <code>endDate</code> after <code>startDate</code>, <code>enrollmentClosesAt</code> not after <code>endDate</code>, and <code>enrollmentOpensAt</code> (optional) before <code>enrollmentClosesAt</code>. Errors: <code>400</code> validation, <code>401</code>, <code>403</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "number": 1,
+  "title": "Trimester 1 - 2027",
+  "description": "Twelve weeks of guided, cohort-based learning.",
+  "startDate": "2027-01-18",
+  "endDate": "2027-04-12",
+  "enrollmentOpensAt": "2026-12-01",
+  "enrollmentClosesAt": "2027-01-10",
+  "weeks": 12
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "trimester": {
+    "_id": "6a0000000000000000000a01",
+    "number": 1,
+    "title": "Trimester 1 - 2027",
+    "description": "Twelve weeks of guided, cohort-based learning.",
+    "startDate": "2027-01-18T00:00:00.000Z",
+    "endDate": "2027-04-12T00:00:00.000Z",
+    "weeks": 12,
+    "enrollmentOpensAt": "2026-12-01T00:00:00.000Z",
+    "enrollmentClosesAt": "2027-01-10T00:00:00.000Z",
+    "status": "upcoming",
+    "isPublished": false
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-trimester-list-admin"
+          data-search="trimester list admin counts cohorts students">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/admin/trimesters</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Lists every Trimester, published or not, newest first, with the number of cohorts and enrolled students in each.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "trimesters": [
+    {
+      "_id": "6a0000000000000000000a01",
+      "number": 1,
+      "title": "Trimester 1 - 2027",
+      "description": "Twelve weeks of guided, cohort-based learning.",
+      "startDate": "2027-01-18T00:00:00.000Z",
+      "endDate": "2027-04-12T00:00:00.000Z",
+      "weeks": 12,
+      "enrollmentOpensAt": "2026-12-01T00:00:00.000Z",
+      "enrollmentClosesAt": "2027-01-10T00:00:00.000Z",
+      "status": "upcoming",
+      "isPublished": false,
+      "cohortCount": 2,
+      "studentCount": 37
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-trimester-update"
+          data-search="trimester update publish status admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/admin/trimesters/:id</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Updates a Trimester. Send only the fields to change. <code>status</code> is <code>upcoming</code>, <code>active</code> or <code>completed</code>; <code>isPublished</code> must be a boolean. Dates are re-validated together. Errors: <code>400</code> invalid id or value, <code>404</code> unknown Trimester.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "isPublished": true,
+  "status": "upcoming"
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "trimester": {
+    "_id": "6a0000000000000000000a01",
+    "number": 1,
+    "title": "Trimester 1 - 2027",
+    "description": "Twelve weeks of guided, cohort-based learning.",
+    "startDate": "2027-01-18T00:00:00.000Z",
+    "endDate": "2027-04-12T00:00:00.000Z",
+    "weeks": 12,
+    "enrollmentOpensAt": "2026-12-01T00:00:00.000Z",
+    "enrollmentClosesAt": "2027-01-10T00:00:00.000Z",
+    "status": "upcoming",
+    "isPublished": true
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-cohort-create"
+          data-search="cohort create programme trimester course tutor capacity admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/admin/cohorts</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Creates a cohort (the public API calls it a programme) that runs one course during one Trimester. It starts with status <code>enrolling</code>. The course must be <code>published</code> with <code>courseType: "trimester"</code>, and every id in <code>instructorIds</code> must be an approved tutor, otherwise <code>422</code>. <code>capacity</code> defaults to 50. Errors: <code>400</code>, <code>404</code> unknown Trimester or course, <code>409</code> duplicate name in the Trimester, <code>422</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "trimesterId": "6a0000000000000000000a01",
+  "courseId": "6a0000000000000000000c01",
+  "name": "Cohort Alpha - Fullstack JS",
+  "capacity": 50,
+  "instructorIds": [
+    "6a0000000000000000000d01"
+  ],
+  "timezone": "Africa/Lagos"
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "cohort": {
+    "_id": "6a0000000000000000000b01",
+    "name": "Cohort Alpha - Fullstack JS",
+    "trimesterId": "6a0000000000000000000a01",
+    "courseId": "6a0000000000000000000c01",
+    "courseTitle": "Fullstack Software Engineering",
+    "status": "enrolling",
+    "capacity": 50,
+    "studentCount": 0,
+    "seatsLeft": 50,
+    "currentWeek": 1,
+    "timezone": "Africa/Lagos",
+    "instructors": [
+      {
+        "_id": "6a0000000000000000000d01",
+        "name": "Jane Tutor"
+      }
+    ]
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-cohort-list-admin"
+          data-search="cohort list admin trimester filter seats">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/admin/cohorts</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Lists cohorts with course title, tutors, student count and seats left. Filter with <code>?trimesterId=</code>. An invalid id returns <code>400</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "cohorts": [
+    {
+      "_id": "6a0000000000000000000b01",
+      "name": "Cohort Alpha - Fullstack JS",
+      "trimesterId": "6a0000000000000000000a01",
+      "courseId": "6a0000000000000000000c01",
+      "courseTitle": "Fullstack Software Engineering",
+      "status": "enrolling",
+      "capacity": 50,
+      "studentCount": 12,
+      "seatsLeft": 38,
+      "currentWeek": 1,
+      "timezone": "Africa/Lagos",
+      "instructors": [
+        {
+          "_id": "6a0000000000000000000d01",
+          "name": "Jane Tutor"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-cohort-update"
+          data-search="cohort update capacity status week instructors admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/admin/cohorts/:id</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Updates <code>name</code>, <code>capacity</code>, <code>instructorIds</code>, <code>timezone</code>, <code>currentWeek</code> or <code>status</code> (<code>enrolling</code>, <code>active</code>, <code>completed</code>, <code>archived</code>). Capacity cannot go below the number of students already enrolled (<code>422</code>). Moving a cohort out of <code>enrolling</code> closes self-enrolment.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "capacity": 60,
+  "currentWeek": 2,
+  "status": "active"
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "cohort": {
+    "_id": "6a0000000000000000000b01",
+    "name": "Cohort Alpha - Fullstack JS",
+    "trimesterId": "6a0000000000000000000a01",
+    "courseId": "6a0000000000000000000c01",
+    "courseTitle": "Fullstack Software Engineering",
+    "status": "active",
+    "capacity": 60,
+    "studentCount": 12,
+    "seatsLeft": 48,
+    "currentWeek": 2,
+    "timezone": "Africa/Lagos",
+    "instructors": [
+      {
+        "_id": "6a0000000000000000000d01",
+        "name": "Jane Tutor"
+      }
+    ]
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-cohort-add-student"
+          data-search="cohort roster add student email admin sponsor seat">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/admin/cohorts/:id/students</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Adds a student by <code>userId</code> or <code>email</code>. An admin may add a student outside the enrolment window and into a paid programme, but never beyond capacity. The student also gets a course enrolment so the programme shows in <code>GET /api/enrollments/my-courses</code>. Errors: <code>404</code> unknown user or cohort, <code>409</code> <code>ALREADY_ENROLLED</code> or <code>COHORT_FULL</code>, <code>422</code> not a student or deactivated.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "email": "alice.student@gloxad.com"
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Student added to cohort",
+  "studentCount": 13
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-cohort-remove-student"
+          data-search="cohort roster remove student admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-delete">DELETE</span>
+              <span class="endpoint-path">/api/lms/admin/cohorts/:id/students/:userId</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Removes a student from the cohort. Their progress records are kept; they only lose cohort access. <code>404</code> if the cohort does not exist or the student is not in it.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Student removed from cohort",
+  "studentCount": 12
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-trimester-public-list"
+          data-search="public trimesters list programmes enrolment open seats price">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/public/trimesters</span>
+              <span class="badge-guard"
+                style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Public (optional token)</span>
+            </div>
+            <p class="endpoint-desc">Lists published Trimesters whose status is <code>upcoming</code> or <code>active</code>, each with its programmes. No sign-in needed. With a Bearer token, <code>enrolled</code> is <code>true</code> for programmes the user has joined. <code>enrolmentState</code> is computed on the server: <code>upcoming</code> (window not open yet), <code>open</code>, or <code>closed</code>. A full programme stays <code>open</code> with <code>seatsLeft: 0</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "trimesters": [
+    {
+      "_id": "6a0000000000000000000a01",
+      "number": 1,
+      "title": "Trimester 1 - 2027",
+      "description": "Twelve weeks of guided, cohort-based learning.",
+      "startDate": "2027-01-18T00:00:00.000Z",
+      "endDate": "2027-04-12T00:00:00.000Z",
+      "weeks": 12,
+      "enrollmentOpensAt": "2026-12-01T00:00:00.000Z",
+      "enrollmentClosesAt": "2027-01-10T00:00:00.000Z",
+      "status": "upcoming",
+      "programmes": [
+        {
+          "_id": "6a0000000000000000000b01",
+          "trimesterId": "6a0000000000000000000a01",
+          "name": "Cohort Alpha - Fullstack JS",
+          "courseId": "6a0000000000000000000c01",
+          "title": "Fullstack Software Engineering",
+          "description": "Build and ship production web apps.",
+          "price": 0,
+          "currency": "NGN",
+          "seats": 50,
+          "seatsLeft": 38,
+          "instructors": [
+            {
+              "_id": "6a0000000000000000000d01",
+              "name": "Jane Tutor"
+            }
+          ],
+          "enrolled": false,
+          "enrolmentState": "open"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-trimester-public-detail"
+          data-search="public trimester detail weeks sessions programme">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/public/trimesters/:id</span>
+              <span class="badge-guard"
+                style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Public (optional token)</span>
+            </div>
+            <p class="endpoint-desc">One published Trimester. Each programme adds <code>weeks</code> (one entry per course module) and <code>sessions</code> (the next five scheduled live classes). Unpublished or unknown ids return <code>404</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "trimester": {
+    "_id": "6a0000000000000000000a01",
+    "number": 1,
+    "title": "Trimester 1 - 2027",
+    "description": "Twelve weeks of guided, cohort-based learning.",
+    "startDate": "2027-01-18T00:00:00.000Z",
+    "endDate": "2027-04-12T00:00:00.000Z",
+    "weeks": 12,
+    "enrollmentOpensAt": "2026-12-01T00:00:00.000Z",
+    "enrollmentClosesAt": "2027-01-10T00:00:00.000Z",
+    "status": "upcoming",
+    "programmes": [
+      {
+        "_id": "6a0000000000000000000b01",
+        "trimesterId": "6a0000000000000000000a01",
+        "name": "Cohort Alpha - Fullstack JS",
+        "courseId": "6a0000000000000000000c01",
+        "title": "Fullstack Software Engineering",
+        "description": "Build and ship production web apps.",
+        "price": 0,
+        "currency": "NGN",
+        "seats": 50,
+        "seatsLeft": 38,
+        "instructors": [
+          {
+            "_id": "6a0000000000000000000d01",
+            "name": "Jane Tutor"
+          }
+        ],
+        "enrolled": false,
+        "enrolmentState": "open",
+        "weeks": [
+          {
+            "weekNumber": 1,
+            "title": "Week 1: Foundations",
+            "lessonCount": 6
+          },
+          {
+            "weekNumber": 2,
+            "title": "Week 2: Backend Basics",
+            "lessonCount": 5
+          }
+        ],
+        "sessions": [
+          {
+            "_id": "6a0000000000000000000e01",
+            "title": "Welcome class",
+            "startsAt": "2027-01-19T17:00:00.000Z",
+            "endsAt": "2027-01-19T19:00:00.000Z"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-cohort-enrol"
+          data-search="enrol cohort programme self enrolment seat payment required">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/enrol</span>
+              <span class="badge-guard"
+                style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Student</span>
+            </div>
+            <p class="endpoint-desc">Self-enrolment for the signed-in student. Checks, in order: student role (<code>403</code>), cohort on a published Trimester (<code>404</code>), enrolment window (<code>409 ENROLMENT_NOT_OPEN</code> or <code>409 ENROLMENT_CLOSED</code>), free programme (<code>409 PAYMENT_REQUIRED</code>), then takes one seat with a single atomic update (<code>409 ALREADY_ENROLLED</code> or <code>409 COHORT_FULL</code>). Two students racing for the last seat can never both succeed. Success also creates the course enrolment.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Enrolled successfully",
+  "cohortId": "6a0000000000000000000b01",
+  "enrolment": {
+    "cohortId": "6a0000000000000000000b01",
+    "courseId": "6a0000000000000000000c01",
+    "enrolledAt": "2026-12-02T09:30:00.000Z"
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 25: SCHOLARSHIPS                                       -->
+        <!-- ============================================================== -->
+        <section class="doc-section" id="scholarships">
+          <h2 class="section-title">25. Scholarships</h2>
+          <p class="section-lead">
+            Admins publish scholarships; students apply with a statement and documents; admins review each application
+            through <code>submitted</code>, <code>under_review</code> and <code>shortlisted</code> to <code>approved</code>
+            or <code>rejected</code>. Drafts are never public, the application window is computed on the server, history is
+            append-only, staff notes stay private, a rejection always carries a reason, and approval never enrols or pays
+            for anything.
+          </p>
+        </section>
+
+        <div class="endpoint-card" id="ep-scholarship-create"
+          data-search="scholarship create draft admin eligibility documents dates">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/admin/scholarships</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Creates a scholarship. It is always created as a <code>draft</code> and is never public until published. <code>closesAt</code> must be after <code>opensAt</code>. <code>trimesterId</code> is optional and informational. Errors: <code>400</code> validation, <code>404</code> unknown Trimester.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "title": "Women in Tech Scholarship",
+  "summary": "Full tuition for twenty learners.",
+  "description": "Covers the full Trimester programme.",
+  "eligibility": [
+    "Be a resident of Nigeria",
+    "Be 18 or older"
+  ],
+  "requiredDocuments": [
+    "Proof of income"
+  ],
+  "opensAt": "2026-12-01",
+  "closesAt": "2027-01-10"
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "scholarship": {
+    "_id": "6a0000000000000000000f01",
+    "title": "Women in Tech Scholarship",
+    "summary": "Full tuition for twenty learners.",
+    "description": "Covers the full Trimester programme.",
+    "eligibility": [
+      "Be a resident of Nigeria",
+      "Be 18 or older"
+    ],
+    "requiredDocuments": [
+      "Proof of income"
+    ],
+    "opensAt": "2026-12-01T00:00:00.000Z",
+    "closesAt": "2027-01-10T00:00:00.000Z",
+    "trimesterId": null,
+    "status": "draft"
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-list-admin"
+          data-search="scholarship list admin application counts status">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/admin/scholarships</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Lists every scholarship with its computed window <code>state</code> and the number of applications in each status.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "scholarships": [
+    {
+      "_id": "6a0000000000000000000f01",
+      "title": "Women in Tech Scholarship",
+      "summary": "Full tuition for twenty learners.",
+      "description": "Covers the full Trimester programme.",
+      "eligibility": [
+        "Be a resident of Nigeria",
+        "Be 18 or older"
+      ],
+      "requiredDocuments": [
+        "Proof of income"
+      ],
+      "opensAt": "2026-12-01T00:00:00.000Z",
+      "closesAt": "2027-01-10T00:00:00.000Z",
+      "trimesterId": null,
+      "status": "published",
+      "state": "open",
+      "applicationCounts": {
+        "submitted": 3,
+        "under_review": 2,
+        "shortlisted": 1,
+        "approved": 1,
+        "rejected": 0,
+        "withdrawn": 0
+      },
+      "applicationTotal": 7
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-update"
+          data-search="scholarship update publish archive readiness checklist">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/admin/scholarships/:id</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Edits a scholarship or moves its <code>status</code> (<code>draft</code>, <code>published</code>, <code>archived</code>). Publishing runs a readiness checklist on the server: title, description, at least one eligibility rule, valid dates, and a closing date in the future. If something is missing the answer is <code>422 NOT_READY_TO_PUBLISH</code> with a <code>missing</code> list. A scholarship that already has applications cannot go back to <code>draft</code> (<code>409 HAS_APPLICATIONS</code>); archive it instead.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "status": "published"
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>422 NOT READY (example)</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "error": "Not ready to publish. Missing: description, at least one eligibility rule",
+  "code": "NOT_READY_TO_PUBLISH",
+  "missing": [
+    "description",
+    "at least one eligibility rule"
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-applications-admin"
+          data-search="scholarship applications review list applicant statement documents history">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/admin/scholarships/:id/applications</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Lists applications with applicant name and email, the statement, the uploaded documents and the full history including staff-only notes. Filter with <code>?status=</code>. Documents are private S3 keys; fetch one with <code>GET /api/upload/signed-url?key=</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "scholarship": {
+    "_id": "6a0000000000000000000f01",
+    "title": "Women in Tech Scholarship",
+    "requiredDocuments": [
+      "Proof of income"
+    ]
+  },
+  "applications": [
+    {
+      "_id": "6a0000000000000000000f10",
+      "status": "under_review",
+      "statement": "I want to study software engineering because...",
+      "documents": [
+        {
+          "label": "Proof of income",
+          "key": "documents/1700000000-abc_income.pdf"
+        }
+      ],
+      "submittedAt": "2026-12-03T10:00:00.000Z",
+      "applicant": {
+        "_id": "6a0000000000000000000d02",
+        "name": "Alice Student",
+        "email": "alice.student@gloxad.com"
+      },
+      "history": [
+        {
+          "status": "submitted",
+          "note": "",
+          "internalNote": "",
+          "at": "2026-12-03T10:00:00.000Z"
+        },
+        {
+          "status": "under_review",
+          "note": "",
+          "internalNote": "Check income letter",
+          "by": "6a0000000000000000000d09",
+          "at": "2026-12-05T09:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-application-status"
+          data-search="scholarship application status move approve reject shortlist note history">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/admin/scholarship-applications/:id/status</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Moves an application. Allowed: <code>submitted</code> to <code>under_review</code> or <code>rejected</code>; <code>under_review</code> to <code>shortlisted</code>, <code>approved</code> or <code>rejected</code>; <code>shortlisted</code> to <code>approved</code> or <code>rejected</code>. Approved, rejected and withdrawn are final (<code>409 INVALID_TRANSITION</code>, with the allowed moves). A rejection needs a <code>note</code> the applicant can see (<code>400 REJECTION_NEEDS_NOTE</code>). <code>internalNote</code> is staff-only. History is append-only, and each move notifies the applicant in the app. Approving enrols, pays for and completes nothing. Two reviewers acting at once: only one succeeds (<code>409 CONCURRENT_CHANGE</code> for the other).</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "status": "rejected",
+  "note": "Documents did not match the eligibility rules.",
+  "internalNote": "Income letter looked altered."
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "application": {
+    "_id": "6a0000000000000000000f10",
+    "status": "rejected",
+    "history": [
+      {
+        "status": "submitted",
+        "note": "",
+        "at": "2026-12-03T10:00:00.000Z"
+      },
+      {
+        "status": "rejected",
+        "note": "Documents did not match the eligibility rules.",
+        "internalNote": "Income letter looked altered.",
+        "at": "2026-12-06T08:00:00.000Z"
+      }
+    ]
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-public-list"
+          data-search="public scholarships list open upcoming closed application status">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/public/scholarships</span>
+              <span class="badge-guard"
+                style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Public (optional token)</span>
+            </div>
+            <p class="endpoint-desc">Published scholarships only, soonest closing first. <code>state</code> is computed on the server: <code>upcoming</code>, <code>open</code> or <code>closed</code>. With a Bearer token, <code>application</code> shows the viewer's own status and the latest note; otherwise it is <code>null</code>. Drafts and archived scholarships never appear.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "scholarships": [
+    {
+      "_id": "6a0000000000000000000f01",
+      "title": "Women in Tech Scholarship",
+      "summary": "Full tuition for twenty learners.",
+      "description": "Covers the full Trimester programme.",
+      "eligibility": [
+        "Be a resident of Nigeria",
+        "Be 18 or older"
+      ],
+      "requiredDocuments": [
+        "Proof of income"
+      ],
+      "opensAt": "2026-12-01T00:00:00.000Z",
+      "closesAt": "2027-01-10T00:00:00.000Z",
+      "trimesterId": null,
+      "state": "open",
+      "application": {
+        "_id": "6a0000000000000000000f10",
+        "status": "under_review",
+        "submittedAt": "2026-12-03T10:00:00.000Z",
+        "latest": {
+          "status": "under_review",
+          "note": "",
+          "at": "2026-12-05T09:00:00.000Z"
+        }
+      }
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-apply"
+          data-search="scholarship apply statement documents required duplicate window">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/scholarships/:id/applications</span>
+              <span class="badge-guard"
+                style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Student</span>
+            </div>
+            <p class="endpoint-desc">Submits an application. Students only (<code>403</code> otherwise). The scholarship must be published (<code>404</code>) and open (<code>409 SCHOLARSHIP_NOT_OPEN</code> or <code>SCHOLARSHIP_CLOSED</code>). <code>statement</code> is 20 to 3000 characters. Every label in <code>requiredDocuments</code> needs a matching document, otherwise <code>400 DOCUMENTS_MISSING</code> with the missing labels. A document <code>key</code> must be a file uploaded to the private <code>documents/</code> folder through the presigned-URL flow. One application per student: a second attempt, even after withdrawing, is <code>409 ALREADY_APPLIED</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "statement": "I want to study software engineering because it will let me support my family.",
+  "documents": [
+    {
+      "label": "Proof of income",
+      "key": "documents/1700000000-abc_income.pdf"
+    }
+  ]
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>201 CREATED</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Application submitted",
+  "application": {
+    "_id": "6a0000000000000000000f10",
+    "status": "submitted",
+    "submittedAt": "2026-12-03T10:00:00.000Z"
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-my-applications"
+          data-search="my scholarship applications history latest note">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/scholarships/applications/me</span>
+              <span class="badge-guard"
+                style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Student</span>
+            </div>
+            <p class="endpoint-desc">The signed-in student's applications with their scholarship, status, documents and full history. Staff-only notes are never included.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "applications": [
+    {
+      "_id": "6a0000000000000000000f10",
+      "scholarship": {
+        "_id": "6a0000000000000000000f01",
+        "title": "Women in Tech Scholarship",
+        "closesAt": "2027-01-10T00:00:00.000Z"
+      },
+      "status": "under_review",
+      "statement": "I want to study...",
+      "documents": [
+        {
+          "label": "Proof of income",
+          "key": "documents/1700000000-abc_income.pdf"
+        }
+      ],
+      "submittedAt": "2026-12-03T10:00:00.000Z",
+      "history": [
+        {
+          "status": "submitted",
+          "note": "",
+          "at": "2026-12-03T10:00:00.000Z"
+        },
+        {
+          "status": "under_review",
+          "note": "",
+          "at": "2026-12-05T09:00:00.000Z"
+        }
+      ],
+      "latest": {
+        "status": "under_review",
+        "note": "",
+        "at": "2026-12-05T09:00:00.000Z"
+      }
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-scholarship-withdraw"
+          data-search="scholarship application withdraw">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/scholarship-applications/:id/withdraw</span>
+              <span class="badge-guard"
+                style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Student (owner)</span>
+            </div>
+            <p class="endpoint-desc">Withdraws the student's own application while it is <code>submitted</code>, <code>under_review</code> or <code>shortlisted</code>. Anyone else's application answers <code>404</code>. Approved, rejected and already withdrawn applications answer <code>409 INVALID_TRANSITION</code>. The withdrawal is added to the history.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Application withdrawn",
+  "application": {
+    "_id": "6a0000000000000000000f10",
+    "status": "withdrawn",
+    "latest": {
+      "status": "withdrawn",
+      "note": "Withdrawn by the applicant",
+      "at": "2026-12-07T08:00:00.000Z"
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
         <!-- SECTION 16: LMS LIVE CLASSROOMS, COMMUNITY & CERTIFICATES     -->
         <!-- ============================================================== -->
         <section class="doc-section" id="lms-live-community-certificates">
@@ -9464,6 +10490,16 @@ Student ID,Full Name,Email,Quizzes (%),Assignments (%),Practicals (%),Coding Cha
             Real-time interactive WebRTC live classrooms backed by LiveKit Cloud and Socket.io <code>/live</code>
             namespace, cohort community discussion channels with threaded moderation, automated verifiable PDF
             certificate issuance with embedded verification QR codes, and comprehensive instructor & admin analytics.
+          </p>
+          <p class="section-lead">
+            <b>Live class rules (Unit 24).</b> Times are UTC and must be in the future, with <code>endsAt</code> after
+            <code>startsAt</code>. A cohort's tutor hosts their own class; an admin schedules for one of the cohort's tutors
+            (<code>instructorId</code>, default the first tutor, <code>422</code> if not in the cohort). Status moves:
+            <code>scheduled</code> to <code>live</code> or <code>ended</code>, <code>live</code> to <code>ended</code>, ended is
+            final (<code>409 INVALID_TRANSITION</code>). Only a <code>scheduled</code> class can be rescheduled or cancelled
+            (<code>409 SESSION_LOCKED</code>). Ending a class closes every open attendance record. Nobody can join an ended
+            class. Listing a cohort's sessions and reading chat history need cohort membership
+            (<code>403 COHORT_ACCESS_DENIED</code>). Students are notified in-app when a class is scheduled or rescheduled.
           </p>
         </section>
 
@@ -10713,6 +11749,28 @@ student2@partner.edu,Jane,Smith,ENG/2026/002,650000000000000000000010,Informatio
         <li><a href="#ep-lms-assignment-submit" class="toc-link">POST /api/lms/assignments/:id/submissions</a></li>
         <li><a href="#ep-lms-instructor-grading-queue" class="toc-link">GET /api/lms/instructor/grading-queue</a></li>
         <li><a href="#ep-lms-submission-grade" class="toc-link">PUT /api/lms/submissions/:id/grade</a></li>
+        <li><a href="#trimester-administration-enrolment" class="toc-link">Trimester Admin & Enrolment</a></li>
+        <li><a href="#ep-trimester-create" class="toc-link">POST /api/lms/admin/trimesters</a></li>
+        <li><a href="#ep-trimester-list-admin" class="toc-link">GET /api/lms/admin/trimesters</a></li>
+        <li><a href="#ep-trimester-update" class="toc-link">PUT /api/lms/admin/trimesters/:id</a></li>
+        <li><a href="#ep-cohort-create" class="toc-link">POST /api/lms/admin/cohorts</a></li>
+        <li><a href="#ep-cohort-list-admin" class="toc-link">GET /api/lms/admin/cohorts</a></li>
+        <li><a href="#ep-cohort-update" class="toc-link">PUT /api/lms/admin/cohorts/:id</a></li>
+        <li><a href="#ep-cohort-add-student" class="toc-link">POST /api/lms/admin/cohorts/:id/students</a></li>
+        <li><a href="#ep-cohort-remove-student" class="toc-link">DELETE /api/lms/admin/cohorts/:id/students/:userId</a></li>
+        <li><a href="#ep-trimester-public-list" class="toc-link">GET /api/lms/public/trimesters</a></li>
+        <li><a href="#ep-trimester-public-detail" class="toc-link">GET /api/lms/public/trimesters/:id</a></li>
+        <li><a href="#ep-cohort-enrol" class="toc-link">POST /api/lms/cohorts/:cohortId/enrol</a></li>
+        <li><a href="#scholarships" class="toc-link">Scholarships</a></li>
+        <li><a href="#ep-scholarship-create" class="toc-link">POST /api/lms/admin/scholarships</a></li>
+        <li><a href="#ep-scholarship-list-admin" class="toc-link">GET /api/lms/admin/scholarships</a></li>
+        <li><a href="#ep-scholarship-update" class="toc-link">PUT /api/lms/admin/scholarships/:id</a></li>
+        <li><a href="#ep-scholarship-applications-admin" class="toc-link">GET /api/lms/admin/scholarships/:id/applications</a></li>
+        <li><a href="#ep-scholarship-application-status" class="toc-link">PUT /api/lms/admin/scholarship-applications/:id/status</a></li>
+        <li><a href="#ep-scholarship-public-list" class="toc-link">GET /api/lms/public/scholarships</a></li>
+        <li><a href="#ep-scholarship-apply" class="toc-link">POST /api/lms/scholarships/:id/applications</a></li>
+        <li><a href="#ep-scholarship-my-applications" class="toc-link">GET /api/lms/scholarships/applications/me</a></li>
+        <li><a href="#ep-scholarship-withdraw" class="toc-link">PUT /api/lms/scholarship-applications/:id/withdraw</a></li>
         <li><a href="#lms-live-community-certificates" class="toc-link">LMS Live, Community & Certificates</a></li>
         <li><a href="#ep-lms-live-sessions-get" class="toc-link">GET /api/lms/live-sessions</a></li>
         <li><a href="#ep-lms-live-sessions-post" class="toc-link">POST /api/lms/live-sessions</a></li>
