@@ -49,9 +49,19 @@ import {
   getStudentFinalProject,
   createFinalProject,
   advanceFinalProjectStage,
+  submitStageDeliverable,
   reviewFinalProjectStage,
+  adminSignOffFinalProject,
   getInstructorFinalProjects,
 } from "../controllers/lmsFinalProject.controller.js";
+import {
+  getCohortGradebook,
+  getStudentTranscript,
+  exportCohortGradebookCsv,
+  overrideStudentGrade,
+  updateCohortAssessmentWeights,
+  getCohortGradeAudits,
+} from "../controllers/lmsGradebook.controller.js";
 
 // Unit 20 Controllers
 import {
@@ -154,12 +164,21 @@ router.post("/labs/:labId/submit", authGuard, submitLab);
 router.get("/cohorts/:cohortId/final-project", authGuard, cohortGuard, getStudentFinalProject);
 router.post("/cohorts/:cohortId/final-project", authGuard, cohortGuard, createFinalProject);
 router.put("/cohorts/:cohortId/final-project/stage", authGuard, cohortGuard, advanceFinalProjectStage);
-router.put("/cohorts/:cohortId/final-project/review", authGuard, roleGuard("instructor"), reviewFinalProjectStage);
-router.get("/instructor/cohorts/:cohortId/final-projects", authGuard, roleGuard("instructor"), getInstructorFinalProjects);
+router.post("/cohorts/:cohortId/final-project/stages/:stageNumber/submit", authGuard, cohortGuard, submitStageDeliverable);
+router.put("/final-projects/:projectId/stages/:stageNumber/review", authGuard, roleGuard("instructor", "admin"), reviewFinalProjectStage);
+router.put("/cohorts/:cohortId/final-project/review", authGuard, roleGuard("instructor", "admin"), reviewFinalProjectStage);
+router.put("/final-projects/:projectId/admin-approve", authGuard, roleGuard("admin"), adminSignOffFinalProject);
+router.get("/instructor/cohorts/:cohortId/final-projects", authGuard, roleGuard("instructor", "admin"), getInstructorFinalProjects);
 
-// 8. Cohort Configuration, Announcements & Reports
+// 8. Academic Gradebook, Audit Engine & Configurable Weights
+router.get("/cohorts/:cohortId/gradebook", authGuard, roleGuard("instructor", "admin"), getCohortGradebook);
+router.get("/cohorts/:cohortId/gradebook/export", authGuard, roleGuard("instructor", "admin"), exportCohortGradebookCsv);
+router.get("/cohorts/:cohortId/my-transcript", authGuard, cohortGuard, getStudentTranscript);
+router.put("/cohorts/:cohortId/gradebook/override", authGuard, roleGuard("instructor", "admin"), overrideStudentGrade);
+router.put("/cohorts/:cohortId/assessment-weights", authGuard, roleGuard("admin"), updateCohortAssessmentWeights);
+router.get("/cohorts/:cohortId/grade-audits", authGuard, roleGuard("instructor", "admin"), getCohortGradeAudits);
 router.get("/cohorts/:cohortId/completion-weights", authGuard, getCohortWeights);
-router.put("/cohorts/:cohortId/completion-weights", authGuard, roleGuard("instructor"), updateCohortWeights);
+router.put("/cohorts/:cohortId/completion-weights", authGuard, roleGuard("admin", "instructor"), updateCohortWeights);
 router.get("/cohorts/:cohortId/announcements", authGuard, getCohortAnnouncements);
 router.post("/cohorts/:cohortId/announcements", authGuard, roleGuard("instructor"), createCohortAnnouncement);
 router.get("/instructor/cohorts/:cohortId/attendance-report", authGuard, roleGuard("instructor"), getCohortAttendanceReport);

@@ -1,17 +1,20 @@
 # Progress Tracker - Gloxad Academy Backend API
 
 > Master Build Plan: [`00-build-plan.md`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/context/specs/00-build-plan.md)  
-> Current Active Spec: [`20-lms-live-community-certificates.md`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/context/specs/20-lms-live-community-certificates.md)
+> Current Active Spec: [`22-handover-phases-2-to-5-specification.md`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/context/specs/22-handover-phases-2-to-5-specification.md)
 
 ---
 
 ## Current Phase
-- **Backend Handover (v1.1, 11 Nov 2026)**: Part A (Module-by-Module Sequential Gating) & Phase 1 (Academic & Catalog Foundations)
+- **Backend Handover (v1.1, 11 Nov 2026)**: Phase 2 (Academic Governance & Grading Engine) [COMPLETED] -> Moving to Phase 3 (LiveKit Egress Recording)
 
 ## Current Goal
 - [x] Part A: Module-by-module sequential course progression (Lessons -> Quiz -> Written Task -> Unlock Next Module), error codes (403 MODULE_LOCKED, 409 LESSONS_INCOMPLETE, 409 QUIZ_NOT_PASSED), module task endpoints, deterministic assessments generator, and 27-test automated verification suite. [COMPLETED & VERIFIED].
 - [x] Phase 1: 18 primary categories dynamic taxonomy with tags, pathways, and soft deactivation; Provider registry entity with YouTube official embed policy; 12-week 22-node curriculum trail layout. [COMPLETED & VERIFIED].
-- [ ] Phase 2–5 (Assigned to Secondary Backend Engineer): 8-stage project state machine, gradebooks & audit, LiveKit WebRTC classroom recording egress, persistent workspace 3-layer autosave, Judge0 sandbox runner.
+- [x] Phase 2: 8-stage final-project state machine (stages 1-8, tutor recommendation vs admin official approval), reusable grading engine (7 assessment categories, 100% total weight validation, raw vs weighted marks), late/resubmission score caps, student/tutor gradebooks, and GradeAudit logs. [COMPLETED & VERIFIED via scripts/test-phase2-governance.js - 15/15 PASSED].
+- [ ] Phase 3: LiveKit WebRTC classroom automatic recording egress to AWS S3, leave tracking, and 1-hour presigned playback. [NEXT].
+- [ ] Phase 4: Persistent multi-file workspace and 3-layer autosave (browser -> server cloud draft -> versioned snapshots).
+- [ ] Phase 5: Developer workflow, GitHub integration, and Judge0 code execution runner (supporting self-hosted AWS EC2, cloud, and local VM fallback).
 
 ---
 
@@ -487,6 +490,35 @@
    - **Certificate Progress Bug Fix**: Fixed query in `getMyCertificates` from `isCompleted: true` to `status: "completed"` and resolved course modules fallback.
    - **API Documentation Portal**: Added comprehensive endpoint cards, schemas, and sidebar navigation links to `src/views/docs.html`.
    - **Alignment Questionnaire**: Created `FRONTEND_ALIGNMENT_QUESTIONS.md` documenting decisions on 10-category taxonomy, 22-node trail, 8-stage final projects, and completion weights.
+
+10. **Phase 2 Delivery: Academic Governance, 8-Stage Project State Machine & Grading Engine (12 Nov 2026)**:
+   - **Specification**: Authored [`context/specs/22-handover-phases-2-to-5-specification.md`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/context/specs/22-handover-phases-2-to-5-specification.md) establishing all contracts for Phases 2–5, including self-hosted Judge0 on AWS EC2.
+   - **Models & Schemas**:
+     - Extended [`src/models/LmsFinalProject.model.js`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/src/models/LmsFinalProject.model.js) to support `pending_admin_approval`, `stageSubmissions` history, `tutorRecommendation`, and `adminSignOff`.
+     - Updated [`src/models/Cohort.model.js`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/src/models/Cohort.model.js) with 7 assessment categories (`quizzes: 15`, `assignments: 15`, `practicals: 15`, `codingChallenges: 10`, `attendance: 10`, `weeklyTasks: 10`, `finalProject: 25`) and `latePolicyCaps`.
+     - Created [`src/models/GradeAudit.model.js`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/src/models/GradeAudit.model.js) for immutable audit logging of manual grade overrides and weight modifications.
+   - **Controllers & Endpoints Implemented**:
+     - `POST /api/lms/cohorts/:cohortId/final-project/stages/:stageNumber/submit`: Validates sequential progression and rejects out-of-order submissions with `403 STAGE_LOCKED`.
+     - `PUT /api/lms/final-projects/:projectId/stages/:stageNumber/review`: Tutor stage review (`approved` or `revisions_required`). Stage 8 forwards tutor recommended mark to Admin as `pending_admin_approval`.
+     - `PUT /api/lms/final-projects/:projectId/admin-approve`: Administrator official final sign-off locking score and granting certificate eligibility.
+     - `GET /api/lms/cohorts/:cohortId/gradebook`: Cohort student roster with weighted GPA and letter grades (A/B/C/D/F).
+     - `GET /api/lms/cohorts/:cohortId/gradebook/export`: Streams official downloadable CSV gradebook.
+     - `GET /api/lms/cohorts/:cohortId/my-transcript`: Student-facing itemized transcript with the 3 separate states (`learningCompletion`, `academicPerformance`, `certificateEligibility`).
+     - `PUT /api/lms/cohorts/:cohortId/gradebook/override`: Manual grade adjustment with mandatory reason and `GradeAudit` entry.
+     - `PUT /api/lms/cohorts/:cohortId/assessment-weights`: Admin weight update with strict 100% total validation.
+     - `GET /api/lms/cohorts/:cohortId/grade-audits`: List of all cohort grade modification audits.
+   - **Automated Verification**:
+     - Created [`scripts/test-phase2-governance.js`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/scripts/test-phase2-governance.js) with 15/15 automated integration checks passing (100% success).
+     - Verified build syntax across 115 files with zero errors (`npm run build`).
+   - **Frontend Integration Guide for Samuel & Frontend Team**:
+     - **8-Stage Progression**: Frontend UI disables Stage $N+1$ until Stage $N$ is marked `approved`. If `revisions_required`, display reviewer feedback notes and allow resubmission on that stage.
+     - **Tutor vs Admin Final Sign-Off**: When student reaches Stage 8, tutor recommends a score. The UI displays *"Awaiting Administrator Sign-Off"* until Admin confirms the grade via `PUT .../admin-approve`.
+     - **Three States Rendering**:
+       - `learningCompletion`: boolean badge (modules/lessons completed).
+       - `academicPerformance`: boolean badge (total weighted score $\ge 70\%$).
+       - `certificateEligibility`: boolean badge (requires both completion + score $\ge 70\%$ + attendance $\ge 70\%$ + approved final project).
+     - **Gradebook CSV Export**: Point the frontend "Export Gradebook" button directly to `GET /api/lms/cohorts/:cohortId/gradebook/export` (triggers native browser download).
+     - **Interactive Docs Sync**: Added all 8 new Phase 2 endpoint cards and sidebar navigation pills to [`src/views/docs.html`](file:///c:/Users/THE%20LAPTOP%20STORE/Desktop/gloxard/src/views/docs.html).
 
 
 ---

@@ -1671,8 +1671,48 @@
             </a>
           </li>
           <li>
+            <a href="#ep-lms-final-project-stage-submit" class="nav-link">
+              <span class="nav-method-pill pill-post">POST</span> Submit Stage Deliverable
+            </a>
+          </li>
+          <li>
             <a href="#ep-lms-final-project-review" class="nav-link">
               <span class="nav-method-pill pill-put">PUT</span> Staff Review Project
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-final-project-admin-approve" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Admin Final Sign-Off
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-gradebook" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Class Gradebook Roster
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-gradebook-export" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Export Gradebook CSV
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-transcript" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Academic Transcript
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-gradebook-override" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Manual Grade Override
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-assessment-weights" class="nav-link">
+              <span class="nav-method-pill pill-put">PUT</span> Assessment Weights
+            </a>
+          </li>
+          <li>
+            <a href="#ep-lms-grade-audits" class="nav-link">
+              <span class="nav-method-pill pill-get">GET</span> Grade Audit History
             </a>
           </li>
           <li>
@@ -9019,6 +9059,311 @@ Accept: application/json</code></pre>
   "decision": "approved",
   "notes": "Excellent architecture breakdown. Advancing to Stage 4 (Milestone 1 Core Implementation).",
   "score": 95
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-final-project-stage-submit"
+          data-search="final project submit stage deliverable repo demo slides">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-post">POST</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/final-project/stages/:stageNumber/submit</span>
+              <span class="badge-guard"
+                style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled / Student</span>
+            </div>
+            <p class="endpoint-desc">Submits stage-specific deliverables (1 to 8) enforcing sequential state-machine invariants. Rejects out-of-order submissions with <code>403 STAGE_LOCKED</code>. Allows resubmissions if stage status is <code>revisions_required</code> without resetting completed milestones.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "deliverables": {
+    "codeRepo": "https://github.com/student/autonomous-fleet-final",
+    "liveDemo": "https://fleet-demo.gloxad.com",
+    "slideDeckUrl": "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/slides/defense.pdf"
+  },
+  "repositoryUrl": "https://github.com/student/autonomous-fleet-final",
+  "liveDemoUrl": "https://fleet-demo.gloxad.com",
+  "notes": "Completed core microservices and final slide deck for presentation defense."
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Stage 8 deliverables submitted successfully for review",
+  "project": {
+    "_id": "67b0981a2f4c9a0012bc8888",
+    "currentStage": 8,
+    "stageKey": "final_evaluation",
+    "stageStatus": "under_review",
+    "repositoryUrl": "https://github.com/student/autonomous-fleet-final",
+    "liveDemoUrl": "https://fleet-demo.gloxad.com"
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-final-project-admin-approve"
+          data-search="final project admin sign off approval governance certificate">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/final-projects/:projectId/admin-approve</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Administrator official final sign-off. Converts the tutor's recommended mark into an official recorded grade, sets <code>isApproved: true</code>, locks the score in the cohort gradebook, and unlocks Programme Certificate eligibility.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "decision": "approved",
+  "score": 92,
+  "notes": "Admin committee reviewed defense recording. Final approval and honours distinction granted."
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "message": "Final project administrator sign-off status: approved",
+  "project": {
+    "_id": "67b0981a2f4c9a0012bc8888",
+    "currentStage": 8,
+    "stageKey": "final_evaluation",
+    "stageStatus": "approved",
+    "score": 92,
+    "isApproved": true,
+    "completedAt": "2026-11-12T05:30:00.000Z",
+    "adminSignOff": {
+      "isApproved": true,
+      "approvedBy": "67b0981a2f4c9a0012bc9999",
+      "approvedAt": "2026-11-12T05:30:00.000Z",
+      "notes": "Admin committee reviewed defense recording. Final approval granted."
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACADEMIC GRADEBOOK, AUDIT ENGINE & TRANSCRIPTS (PHASE 2) -->
+        <div class="endpoint-card" id="ep-lms-gradebook"
+          data-search="cohort gradebook roster scores letter grade academic performance gpa">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/gradebook</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+            </div>
+            <p class="endpoint-desc">Retrieves the complete cohort student roster gradebook with weighted contributions across all 7 assessment categories (Quizzes 15%, Assignments 15%, Practicals 15%, Coding Challenges 10%, Attendance 10%, Weekly Tasks 10%, Final Project 25%), letter grades (A/B/C/D/F), and the 3 distinct completion states.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "cohortId": "67b0981a2f4c9a0012bc1111",
+  "cohortName": "Fullstack Engineering Cohort 2026-A",
+  "weights": {
+    "quizzes": 15,
+    "assignments": 15,
+    "practicals": 15,
+    "codingChallenges": 10,
+    "attendance": 10,
+    "weeklyTasks": 10,
+    "finalProject": 25,
+    "passingThreshold": 70
+  },
+  "totalStudents": 24,
+  "roster": [
+    {
+      "student": {
+        "_id": "67b0981a2f4c9a0012bc2222",
+        "name": "Alex Mercer",
+        "email": "alex.mercer@example.com",
+        "avatarUrl": "https://amzn-v3-buccket-gloxad-sstone.s3.eu-north-1.amazonaws.com/avatars/alex.png"
+      },
+      "components": {
+        "quizzes": { "rawAverage": 88, "weight": 15, "weightedContribution": 13.2 },
+        "assignments": { "rawAverage": 92, "weight": 15, "weightedContribution": 13.8 },
+        "practicals": { "rawAverage": 95, "weight": 15, "weightedContribution": 14.3 },
+        "codingChallenges": { "rawAverage": 90, "weight": 10, "weightedContribution": 9.0 },
+        "attendance": { "rawAverage": 100, "weight": 10, "weightedContribution": 10.0 },
+        "weeklyTasks": { "rawAverage": 100, "weight": 10, "weightedContribution": 10.0 },
+        "finalProject": { "rawAverage": 92, "weight": 25, "weightedContribution": 23.0, "isApproved": true }
+      },
+      "totalWeightedScore": 93.3,
+      "letterGrade": "A",
+      "passingThreshold": 70,
+      "isPassing": true,
+      "states": {
+        "learningCompletion": true,
+        "academicPerformance": true,
+        "certificateEligibility": true
+      }
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-gradebook-export"
+          data-search="export gradebook csv download spreadsheet marks">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/gradebook/export</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+            </div>
+            <p class="endpoint-desc">Streams an official downloadable CSV spreadsheet of the entire cohort gradebook with headers: <code>Student ID, Full Name, Email, Quizzes (%), Assignments (%), Practicals (%), Coding Challenges (%), Attendance (%), Weekly Tasks (%), Final Project (%), Overall Score (%), Letter Grade, Passing Status, Certificate Eligible</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>RESPONSE HEADERS & CSV PREVIEW</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>HTTP/1.1 200 OK
+Content-Type: text/csv
+Content-Disposition: attachment; filename="cohort-67b0981a2f4c9a0012bc1111-gradebook.csv"
+
+Student ID,Full Name,Email,Quizzes (%),Assignments (%),Practicals (%),Coding Challenges (%),Attendance (%),Weekly Tasks (%),Final Project (%),Overall Score (%),Letter Grade,Passing Status,Certificate Eligible
+67b0981a2f4c9a0012bc2222,"Alex Mercer",alex.mercer@example.com,88,92,95,90,100,100,92,93.3,A,PASSED,ELIGIBLE</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-transcript"
+          data-search="student transcript academic record gpa breakdown certificate pass fail">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/my-transcript</span>
+              <span class="badge-guard"
+                style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Enrolled Student</span>
+            </div>
+            <p class="endpoint-desc">Student personal academic breakdown. Displays raw averages, weight points, overall weighted score, letter grade, and explicitly distinguishes <code>learningCompletion</code> (content watched) from <code>academicPerformance</code> (&ge; 70%) and <code>certificateEligibility</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "cohortId": "67b0981a2f4c9a0012bc1111",
+  "cohortName": "Fullstack Engineering Cohort 2026-A",
+  "studentId": "67b0981a2f4c9a0012bc2222",
+  "transcript": {
+    "components": {
+      "quizzes": { "rawAverage": 88, "weight": 15, "weightedContribution": 13.2 },
+      "assignments": { "rawAverage": 92, "weight": 15, "weightedContribution": 13.8 },
+      "practicals": { "rawAverage": 95, "weight": 15, "weightedContribution": 14.3 },
+      "codingChallenges": { "rawAverage": 90, "weight": 10, "weightedContribution": 9.0 },
+      "attendance": { "rawAverage": 100, "weight": 10, "weightedContribution": 10.0, "attendedSessions": 12, "totalSessions": 12 },
+      "weeklyTasks": { "rawAverage": 100, "weight": 10, "weightedContribution": 10.0 },
+      "finalProject": { "rawAverage": 92, "weight": 25, "weightedContribution": 23.0, "isApproved": true }
+    },
+    "totalWeightedScore": 93.3,
+    "letterGrade": "A",
+    "passingThreshold": 70,
+    "isPassing": true,
+    "states": {
+      "learningCompletion": true,
+      "academicPerformance": true,
+      "certificateEligibility": true
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-gradebook-override"
+          data-search="manual grade override adjustment audit reason instructor admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/gradebook/override</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+            </div>
+            <p class="endpoint-desc">Records a manual score adjustment or exception. Enforces a mandatory <code>reason</code> string and appends an immutable entry to the <code>GradeAudit</code> collection.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "studentId": "67b0981a2f4c9a0012bc2222",
+  "newMark": 88,
+  "reason": "Exceptional live defense demonstration and open-source contribution bonus."
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-assessment-weights"
+          data-search="assessment weights 100 percent validation curriculum config admin">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-put">PUT</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/assessment-weights</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin Only</span>
+            </div>
+            <p class="endpoint-desc">Configures the 7 assessment weights for the cohort. Strictly validates that <code>quizzes + assignments + practicals + codingChallenges + attendance + weeklyTasks + finalProject == 100%</code>. Logs all previous and new weights to <code>GradeAudit</code>.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>REQUEST BODY</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "quizzes": 15,
+  "assignments": 15,
+  "practicals": 15,
+  "codingChallenges": 10,
+  "attendance": 10,
+  "weeklyTasks": 10,
+  "finalProject": 25,
+  "passingThreshold": 70,
+  "reason": "Official trimester 2026 academic syllabus weight alignment."
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-lms-grade-audits"
+          data-search="grade audits history changes overrides staff actor timestamp">
+          <div class="endpoint-header">
+            <div class="endpoint-title-row">
+              <span class="method-badge method-get">GET</span>
+              <span class="endpoint-path">/api/lms/cohorts/:cohortId/grade-audits</span>
+              <span class="badge-guard"
+                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Instructor / Admin</span>
+            </div>
+            <p class="endpoint-desc">Retrieves the complete audit trail of manual grade overrides, weight adjustments, and academic exceptions with actor identity, previous marks, new marks, and reasons.</p>
+          </div>
+          <div class="endpoint-body">
+            <div class="code-block">
+              <div class="code-header"><span>200 OK RESPONSE</span><button class="copy-code-btn" onclick="copySnippet(this)">Copy</button></div>
+              <pre><code>{
+  "cohortId": "67b0981a2f4c9a0012bc1111",
+  "totalAudits": 1,
+  "audits": [
+    {
+      "_id": "67b0981a2f4c9a0012bc9999",
+      "assessmentType": "override",
+      "previousMark": 82.5,
+      "newMark": 88,
+      "reason": "Exceptional live defense demonstration and open-source contribution bonus.",
+      "actor": {
+        "_id": "67b0981a2f4c9a0012bc3333",
+        "firstName": "Dr. Sarah",
+        "lastName": "Connor",
+        "role": "instructor"
+      },
+      "createdAt": "2026-11-12T05:35:00.000Z"
+    }
+  ]
 }</code></pre>
             </div>
           </div>

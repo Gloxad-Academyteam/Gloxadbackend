@@ -54,6 +54,11 @@ export const env = {
   LIVEKIT_URL: process.env.LIVEKIT_URL || "wss://gloxad-nirh9mai.livekit.cloud",
   LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY || "devkey",
   LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET || "secret_mock_livekit_key_for_testing_1234567890",
+  JUDGE0_API_URL: process.env.JUDGE0_API_URL || "https://judge0-ce.p.rapidapi.com",
+  JUDGE0_API_KEY: process.env.JUDGE0_API_KEY || "",
+  JUDGE0_RAPIDAPI_HOST: process.env.JUDGE0_RAPIDAPI_HOST || "judge0-ce.p.rapidapi.com",
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || "",
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || "",
 };
 
 export default env;

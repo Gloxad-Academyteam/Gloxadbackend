@@ -67,13 +67,44 @@ const LmsFinalProjectSchema = new Schema(
     },
     stageStatus: {
       type: String,
-      enum: ["pending_submission", "submitted", "under_review", "approved", "revisions_required"],
+      enum: [
+        "pending_submission",
+        "submitted",
+        "under_review",
+        "approved",
+        "revisions_required",
+        "pending_admin_approval",
+      ],
       default: "pending_submission",
       index: true,
     },
     deliverables: {
       type: Schema.Types.Mixed,
       default: {},
+    },
+    stageSubmissions: [
+      {
+        stage: { type: Number, required: true },
+        stageKey: { type: String, required: true },
+        deliverables: { type: Schema.Types.Mixed, default: {} },
+        status: { type: String, enum: ["submitted", "approved", "revisions_required"], default: "submitted" },
+        feedback: { type: String, default: "" },
+        submittedAt: { type: Date, default: Date.now },
+        reviewedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+        reviewedAt: { type: Date, default: null },
+      },
+    ],
+    tutorRecommendation: {
+      score: { type: Number, min: 0, max: 100, default: null },
+      notes: { type: String, default: "" },
+      recommendedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+      recommendedAt: { type: Date, default: null },
+    },
+    adminSignOff: {
+      isApproved: { type: Boolean, default: false },
+      approvedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+      approvedAt: { type: Date, default: null },
+      notes: { type: String, default: "" },
     },
     auditTrail: [
       {

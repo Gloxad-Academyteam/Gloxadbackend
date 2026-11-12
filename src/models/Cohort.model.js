@@ -52,12 +52,22 @@ const CohortSchema = new Schema(
       index: true,
     },
     completionWeights: {
-      lessons: { type: Number, default: 25 },
-      quizzes: { type: Number, default: 25 },
-      assignments: { type: Number, default: 25 },
+      quizzes: { type: Number, default: 15 },
+      assignments: { type: Number, default: 15 },
+      practicals: { type: Number, default: 15 },
+      codingChallenges: { type: Number, default: 10 },
       attendance: { type: Number, default: 10 },
-      finalProject: { type: Number, default: 15 },
+      weeklyTasks: { type: Number, default: 10 },
+      finalProject: { type: Number, default: 25 },
+      lessons: { type: Number, default: 0 },
       passingThreshold: { type: Number, default: 70 },
+    },
+    latePolicyCaps: {
+      onTimePercent: { type: Number, default: 100 },
+      firstMissedDeadlinePercent: { type: Number, default: 66.7 },
+      secondAttemptPercent: { type: Number, default: 33.3 },
+      laterAttemptsPercent: { type: Number, default: 13.3 },
+      unsubmittedPercent: { type: Number, default: 0 },
     },
     announcements: [
       {
