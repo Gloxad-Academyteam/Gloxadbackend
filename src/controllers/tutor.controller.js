@@ -252,6 +252,11 @@ export const createCourseDraft = async (req, res, next) => {
       return res.status(400).json({ error: "Title, category, and course type are required" });
     }
 
+    // Trimester courses are created by tutors only (product decision). Admins moderate and run cohorts, they do not author them.
+    if (String(courseType).toLowerCase() === "trimester" && req.user.role !== "instructor") {
+      return res.status(403).json({ error: "Only tutors can create Trimester courses", code: "TRIMESTER_COURSE_TUTOR_ONLY" });
+    }
+
     let baseSlug = generateSlug(title);
     let slug = baseSlug;
     let count = 1;

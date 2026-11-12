@@ -1,6 +1,7 @@
 import { LmsAssignment } from "../models/LmsAssignment.model.js";
 import { LmsSubmission } from "../models/LmsSubmission.model.js";
 import { Course } from "../models/Course.model.js";
+import { notifyUsers } from "../utils/notify.js";
 import { Notification } from "../models/Notification.model.js";
 
 /**
@@ -163,6 +164,8 @@ export const submitAssignment = async (req, res, next) => {
       isLate,
       status: "pending_review",
     });
+
+    await notifyUsers(cohort.instructorIds, { title: "Submission received", message: `A learner submitted "${assignment.title}".`, type: "submission_received", link: "/lms/instructor/grading-queue" });
 
     res.status(201).json({
       submission: newSubmission,

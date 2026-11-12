@@ -69,6 +69,12 @@ const CohortSchema = new Schema(
       laterAttemptsPercent: { type: Number, default: 13.3 },
       unsubmittedPercent: { type: Number, default: 0 },
     },
+    // Rules that flag learners who may need support. Admin-configurable per cohort (spec 27).
+    supportThresholds: {
+      lowProgressPercent: { type: Number, default: 40 },
+      lowAttendancePercent: { type: Number, default: 60 },
+      lateSubmissions: { type: Number, default: 2 },
+    },
     announcements: [
       {
         title: { type: String, required: true, trim: true },

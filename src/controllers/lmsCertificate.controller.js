@@ -6,6 +6,9 @@ import { Enrollment } from "../models/Enrollment.model.js";
 import { LmsLessonProgress } from "../models/LmsLessonProgress.model.js";
 import { generateAndUploadCertificatePdf } from "../utils/certificate.js";
 import { generateSignedGetUrl } from "../utils/s3.js";
+import { notifyUsers } from "../utils/notify.js";
+import { calculateStudentAcademicMetrics } from "./lmsGradebook.controller.js";
+import crypto from "crypto";
 
 /**
  * Helper to generate LinkedIn Add-to-Profile share metadata
@@ -312,10 +315,16 @@ export const revokeCertificate = async (req, res, next) => {
       return res.status(404).json({ error: "Certificate not found" });
     }
 
+    // Revoking needs a reason the learner can be shown (Weekly Developer Guide, certificate rules)
+    const reason = String(req.body?.reason ?? "").trim();
+    if (!reason) return res.status(400).json({ error: "A reason is required to revoke a certificate", code: "REASON_REQUIRED" });
+    if (cert.revokedAt) return res.status(409).json({ error: "This certificate is already revoked", code: "ALREADY_REVOKED" });
+
     cert.revokedAt = new Date();
-    cert.revokedReason = req.body.reason || "Revoked by administrator";
+    cert.revokedReason = reason;
     cert.revokedBy = req.user._id;
     await cert.save();
+    await notifyUsers([cert.userId], { title: "Certificate revoked", message: `Your certificate "${cert.title}" was revoked. ${reason}`, type: "certificate_revoked", link: "/lms/certificates" });
 
     return res.status(200).json({
       message: "Certificate revoked successfully",
@@ -368,4 +377,56 @@ export default {
   revokeCertificate,
   reissueCertificate,
   buildLinkedInShare,
+};
+
+/**
+ * POST /api/lms/admin/cohorts/:cohortId/certificates  { userId, overrideReason? }
+ * An admin issues a certificate. The learner must be eligible by the gradebook rules, unless the admin writes an
+ * override reason (at least 10 characters), which is stored on the certificate. One valid certificate per learner per cohort.
+ */
+export const issueCertificate = async (req, res, next) => {
+  try {
+    const { cohortId } = req.params;
+    const { userId } = req.body || {};
+    const overrideReason = String(req.body?.overrideReason ?? "").trim();
+    if (!cohortId.match(/^[0-9a-fA-F]{24}$/) || !String(userId ?? "").match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "A valid cohort ID and userId are required" });
+    }
+
+    const cohort = await Cohort.findById(cohortId);
+    if (!cohort) return res.status(404).json({ error: "Cohort not found" });
+    if (!cohort.studentIds.some((id) => String(id) === String(userId))) {
+      return res.status(404).json({ error: "This student is not in the cohort" });
+    }
+
+    const existing = await LmsCertificate.findOne({ cohortId, userId });
+    if (existing && !existing.revokedAt) return res.status(409).json({ error: "A certificate has already been issued to this learner", code: "ALREADY_ISSUED", certificateId: existing.certificateId });
+    if (existing && existing.revokedAt) return res.status(409).json({ error: "This certificate was revoked. Reissue it instead.", code: "REVOKED_USE_REISSUE", certificateId: existing.certificateId });
+
+    const metrics = await calculateStudentAcademicMetrics(cohortId, userId, cohort.completionWeights);
+    const eligible = Boolean(metrics.states?.certificateEligibility);
+    if (!eligible) {
+      if (!overrideReason) {
+        return res.status(422).json({ error: "This learner is not eligible for a certificate yet", code: "NOT_ELIGIBLE", states: metrics.states });
+      }
+      if (overrideReason.length < 10) return res.status(400).json({ error: "An override reason needs at least 10 characters", code: "OVERRIDE_REASON_TOO_SHORT" });
+    }
+
+    const course = await Course.findById(cohort.courseId).select("title");
+    const certificate = await LmsCertificate.create({
+      certificateId: `GLX-${new Date().getFullYear()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
+      userId,
+      cohortId,
+      courseId: cohort.courseId,
+      title: course?.title ?? cohort.name,
+      issuedBy: req.user._id,
+      issuedBasis: eligible ? "eligible" : "override",
+      overrideReason: eligible ? "" : overrideReason,
+    });
+
+    await notifyUsers([userId], { title: "Certificate issued", message: `Your certificate for "${certificate.title}" is ready.`, type: "certificate_issued", link: "/lms/certificates" });
+    return res.status(201).json({ message: "Certificate issued", certificate, eligible });
+  } catch (error) {
+    next(error);
+  }
 };

@@ -64,6 +64,22 @@ const LmsCertificateSchema = new Schema(
       ref: "User",
       default: null,
     },
+    // How the certificate was issued. "override" means an admin issued it to a learner who was not yet eligible and wrote why.
+    issuedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    issuedBasis: {
+      type: String,
+      enum: ["eligible", "override"],
+      default: "eligible",
+    },
+    overrideReason: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   {
     timestamps: true,

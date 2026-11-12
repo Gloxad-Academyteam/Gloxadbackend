@@ -62,10 +62,22 @@ const run = async () => {
     }
     check("no course was created by the refused attempts", (await Course.countDocuments({ instructor: { $in: [pending.user._id, rejected.user._id] } })) === 0);
 
+    console.log("\n2b. Trimester courses are created by tutors only");
+    const trimesterBody = { title: "U23 Trimester Course", category: "Software Development", courseType: "trimester" };
+    const asAdmin = await call("POST", "/tutor/courses", admin.token, trimesterBody);
+    check("an admin cannot create a Trimester course: 403 TRIMESTER_COURSE_TUTOR_ONLY", asAdmin.status === 403 && asAdmin.data.code === "TRIMESTER_COURSE_TUTOR_ONLY", asAdmin.data);
+    const asTutor = await call("POST", "/tutor/courses", approved.token, trimesterBody);
+    if (asTutor.data.course?._id) courseIds.push(asTutor.data.course._id);
+    check("an approved tutor can", asTutor.status === 201 && asTutor.data.course.courseType === "trimester", asTutor.data);
+    check("a student cannot (role 403)", (await call("POST", "/tutor/courses", student.token, trimesterBody)).status === 403);
+    check("a pending tutor still cannot (approval gate first)", (await call("POST", "/tutor/courses", pending.token, trimesterBody)).data.code === "TUTOR_NOT_APPROVED");
+    check("an admin may still create other course types", (await call("POST", "/tutor/courses", admin.token, { ...trimesterBody, courseType: "free" })).status === 201);
+    check("the refused admin attempt created nothing", (await Course.countDocuments({ instructor: admin.user._id, courseType: "trimester" })) === 0);
+
     console.log("\n3. Role checks come first");
     const studentTry = await call("POST", "/tutor/courses", student.token, body);
     check("a student is refused with the role 403, not the approval code", studentTry.status === 403 && studentTry.data.code !== "TUTOR_NOT_APPROVED", studentTry.data);
-    check("an admin may author (existing design: the role guard lets admins through instructor routes)", (await call("POST", "/tutor/courses", admin.token, body)).status === 201);
+    check("an admin may author other course types (existing design: the role guard lets admins through instructor routes)", (await call("POST", "/tutor/courses", admin.token, body)).status === 201);
     check("signed-out is 401", (await call("POST", "/tutor/courses", null, body)).status === 401);
 
     console.log("\n4. What a pending tutor can still do");

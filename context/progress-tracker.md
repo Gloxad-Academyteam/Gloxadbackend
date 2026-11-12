@@ -13,12 +13,15 @@
 - [x] Phase 1: 18 primary categories dynamic taxonomy with tags, pathways, and soft deactivation; Provider registry entity with YouTube official embed policy; 12-week 22-node curriculum trail layout. [COMPLETED & VERIFIED].
 - [x] Phase 2: 8-stage final-project state machine (stages 1-8, tutor recommendation vs admin official approval), reusable grading engine (7 assessment categories, 100% total weight validation, raw vs weighted marks), late/resubmission score caps, student/tutor gradebooks, and GradeAudit logs. [COMPLETED & VERIFIED via scripts/test-phase2-governance.js - 15/15 PASSED].
 - [x] Unit 21: Trimester administration and programme enrolment (admin Trimester and cohort CRUD, roster management, public Trimester list and detail, atomic self-enrolment). [COMPLETED & VERIFIED via scripts/test-unit21-trimester.js - 87/87 PASSED].
-- [x] Unit 23: Course creation governance (server-side tutor approval check on the four authoring routes). [COMPLETED & VERIFIED via scripts/test-unit23-course-governance.js - 20/20 PASSED]. Open: whether tutors may create `trimester`-type courses (admins already can).
+- [x] Unit 23: Course creation governance (server-side tutor approval check on the four authoring routes). [COMPLETED & VERIFIED via scripts/test-unit23-course-governance.js - 20/20 PASSED]. Decided later (Unit 28): only tutors can create `trimester`-type courses.
 - [x] Unit 24: Live class scheduling and lifecycle (admin scheduling, status transitions, reschedule and cancel rules, attendance closed when a class ends, membership checks on chat and session lists, in-app notifications). [COMPLETED & VERIFIED via scripts/test-unit24-live-classes.js - 49/49 PASSED].
 - [ ] Phase 3: LiveKit WebRTC classroom automatic recording egress to AWS S3 and 1-hour presigned playback. [Still pending; needs LiveKit Egress credentials].
 - [x] Unit 25: Scholarships (admin create, publish with server-side readiness checklist, review workflow with append-only history, student apply and withdraw, in-app notifications). [COMPLETED & VERIFIED via scripts/test-unit25-scholarships.js - 80/80 PASSED].
-- [ ] Paid-programme checkout (Paystack) for Trimester enrolment. [Deferred on request, Unit 26].
-- [ ] Weekly Developer Guide gaps still open (see "Guide coverage audit" below): enrolment statuses and withdrawal, in-app notification events, "Continue Learning" pointer, admin live-class scheduling, instructor support flags, Trimester archived state and readiness checklist, admin-managed landing page content, date-locked days.
+- [x] Unit 26: Enrolment lifecycle (active, suspended, completed, withdrawn with history, student withdrawal, enrolment confirmation) and Trimester publishing (archive, server readiness checklist, admin preview). [COMPLETED & VERIFIED via scripts/test-unit26-enrolment-lifecycle.js - 62/62 PASSED].
+- [x] Unit 27: Notification events (announcements, submissions, certificates), Continue Learning pointer, instructor support flags with admin thresholds, certificate issuing with eligibility or written override, revoke reason required. [COMPLETED & VERIFIED via scripts/test-unit27-engagement.js - 46/46 PASSED].
+- [x] Unit 28: Public landing page data for a Trimester course (`GET /api/lms/public/programmes/:cohortId`, course image, trailer, skills, audience, requirements) and the product decision that only tutors can create Trimester courses (`403 TRIMESTER_COURSE_TUTOR_ONLY`). [COMPLETED & VERIFIED via scripts/test-unit28-programme-landing.js - 21/21 PASSED; Unit 23 test extended to 26/26].
+- [ ] Paid-programme checkout (Paystack) for Trimester enrolment. [Deferred on request, Unit 29].
+- [ ] Weekly Developer Guide gaps still open (see "Guide coverage audit" below): admin-managed landing page content, date-locked days (Program, Week, Day, Lesson), scheduled reminders (needs a scheduler), approval-based enrolment (Pending status), automatic live recording (Phase 3).
 - [ ] Phase 4: Persistent multi-file workspace and 3-layer autosave (browser -> server cloud draft -> versioned snapshots).
 - [ ] Phase 5: Developer workflow, GitHub integration, and Judge0 code execution runner (supporting self-hosted AWS EC2, cloud, and local VM fallback).
 
@@ -571,12 +574,12 @@ Checked against this backend. Payment excluded by request.
 | Live class: join window 10 minutes enforced on the server, attendance from join and leave | Exists |
 | Weights table per cohort, gradebook, final project, certificates with revoke and reissue | Exists |
 | Instructor roster, attendance, announcements, discussion moderation | Exists |
-| "Continue Learning" pointer (last activity lesson and scroll position per student) | Partly: scroll position is stored per lesson, no dashboard pointer |
-| Admin schedules live classes | Missing: only instructors can create sessions |
-| Enrolment statuses (pending, active, completed, withdrawn, suspended) and withdrawal | Missing: cohorts hold a plain student list |
-| Notifications for enrolment, announcements, upcoming class, due dates, submissions, certificates | Mostly missing: only assignment grading and scholarship decisions notify |
-| Instructor flags for low progress, low attendance, late work with admin thresholds | Missing |
-| Trimester Draft, Published, Archived with a server readiness checklist | Partly: publish flag exists, no archived state, no checklist |
+| "Continue Learning" pointer (last activity lesson and scroll position per student) | Done (Unit 27) |
+| Admin schedules live classes | Done (Unit 24) |
+| Enrolment statuses (active, completed, withdrawn, suspended) and withdrawal | Done (Unit 26); Pending not used |
+| Notifications for enrolment, announcements, upcoming class, due dates, submissions, certificates | Done except scheduled reminders (needs a scheduler) |
+| Instructor flags for low progress, low attendance, late work with admin thresholds | Done (Unit 27) |
+| Trimester Draft, Published, Archived with a server readiness checklist | Done (Unit 26) |
 | Admin-managed landing page content (hero text, page title, published flag) | Missing |
 | Days unlock by date, locked days rejected by the API (Program, Week, Day, Lesson) | Missing: curriculum is modules and lessons without day unlock dates |
 | Sandbox autosave to the student's progress (about every 10 seconds) | Partly: lab autosave exists; workspace unit (Phase 4) pending |
@@ -594,6 +597,32 @@ Checked against this backend. Payment excluded by request.
 - [`src/models/LmsLiveSession.model.js`](src/models/LmsLiveSession.model.js) gained `endedAt`.
 - Docs: rules paragraph in Section 16. Tests: `scripts/test-unit24-live-classes.js` 49/49.
 - Not done: automatic recording (Phase 3) needs LiveKit Egress credentials and an S3 target.
+
+---
+
+### Unit 26 (`26-enrolment-lifecycle-and-trimester-publishing.md`) [COMPLETED & VERIFIED]
+- New model [`src/models/CohortEnrolment.model.js`](src/models/CohortEnrolment.model.js): one record per student per cohort with `status` and append-only `history`. `Cohort.studentIds` stays the access list (active and completed students), so every existing route keeps working; suspended and withdrawn students are removed from it (seat freed) but keep record and progress. Members from before this unit are treated as active and get a record on first change.
+- Endpoints (in [`lmsTrimester.controller.js`](src/controllers/lmsTrimester.controller.js)): `GET /api/lms/admin/cohorts/:id/enrolments`, `PUT /api/lms/admin/cohorts/:id/enrolments/:userId/status` (reason required for suspend and withdraw; reinstating checks capacity; conditional update so two admins cannot apply one move twice), `PUT /api/lms/cohorts/:cohortId/withdraw`, `GET /api/lms/enrolments/me`. Unit 21 add, remove and self-enrol now write records and send `enrolment_confirmed`; a suspended student cannot re-enrol (`ENROLMENT_SUSPENDED`).
+- Trimester: `archivedAt` hides from public routes and enrolment without deleting; publishing runs the readiness checklist (`422 NOT_READY_TO_PUBLISH` with `missing`); `GET /api/lms/admin/trimesters/:id/preview` shows the public view of a draft or archived Trimester with readiness.
+- Docs: Section 26 with 5 cards, sidebar group, TOC. Tests: 62/62; Units 21, 23, 24, 25 and Phase 2 re-run and still pass.
+- `Pending` enrolment status is not used (enrolment is open, not approval-based); add it if the product owner decides on approval-based enrolment.
+
+---
+
+### Unit 27 (`27-engagement-support-and-certificates.md`) [COMPLETED & VERIFIED]
+- [`src/controllers/lmsEngagement.controller.js`](src/controllers/lmsEngagement.controller.js): `GET /api/lms/continue-learning` (resume, next, finished or start, with scroll position), `GET /api/lms/instructor/cohorts/:cohortId/support-flags` (low progress from week 2, low attendance with excused classes removed, late work; assigned tutor or admin), `PUT /api/lms/admin/cohorts/:id/support-thresholds`. `Cohort.supportThresholds` added (defaults 40, 60, 2).
+- Certificates: `POST /api/lms/admin/cohorts/:cohortId/certificates` issues a certificate (eligible by gradebook rules, or `overrideReason` of at least 10 characters stored on the certificate; `LmsCertificate` gained `issuedBy`, `issuedBasis`, `overrideReason`). Revoke now requires a reason, refuses repeats and notifies the learner. Before this unit nothing but the seed script created LMS certificates.
+- Notifications added via `notifyUsers`: new announcement (students), submission received (tutors), certificate issued and revoked (learner).
+- Not built: reminders for upcoming classes and due dates (no scheduler in the backend; no new package without approval). The eligible-issue path relies on the full gradebook and is exercised by the gradebook tests; Unit 27 tests cover the override path.
+- Docs: Section 27 with 4 cards, sidebar group, TOC. Tests: 46/46.
+
+---
+
+### Unit 28 (`28-public-programme-landing.md`) [COMPLETED & VERIFIED]
+- Decision recorded: **only tutors can create Trimester courses** (`createCourseDraft` answers `403 TRIMESTER_COURSE_TUTOR_ONLY` to admins and everyone else who is not an instructor). Admins moderate the course and run the cohort that teaches it.
+- Public programme data now includes the course content: `thumbnail` (cover image from the course wizard), `trailerVideoUrl`, `level`, `language`, `skills`, `targetAudience`, `requirements`, `slug`. Missing content is `null` or an empty list.
+- New `GET /api/lms/public/programmes/:cohortId` (optional token): one programme with its Trimester summary, weeks, upcoming sessions, tutors, seats and registration state. Only published, non-archived Trimesters and enrolling or active cohorts; no student data for visitors.
+- Docs: Section 28 card and a note on `POST /api/tutor/courses`. Tests: 21/21; Unit 23 now 26/26; Unit 21 still 87/87.
 
 ---
 

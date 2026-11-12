@@ -5,13 +5,15 @@ import { Course } from "../models/Course.model.js";
 import { Enrollment } from "../models/Enrollment.model.js";
 import { User } from "../models/User.model.js";
 import { LmsLiveSession } from "../models/LmsLiveSession.model.js";
+import { CohortEnrolment, ENROLMENT_STATUSES } from "../models/CohortEnrolment.model.js";
+import { notifyUsers } from "../utils/notify.js";
 
 const TRIMESTER_STATUSES = ["upcoming", "active", "completed"];
 const COHORT_STATUSES = ["enrolling", "active", "completed", "archived"];
 const CURRENCY = "NGN";
 
 const isId = (value) => mongoose.isValidObjectId(value);
-const fail = (res, status, error, code) => res.status(status).json(code ? { error, code } : { error });
+const fail = (res, status, error, code, extra = {}) => res.status(status).json(code ? { error, code, ...extra } : { error });
 const toDate = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -84,6 +86,58 @@ const seatFailure = (res, reason) => {
   if (reason === "ALREADY_ENROLLED") return fail(res, 409, "Already enrolled in this programme", "ALREADY_ENROLLED");
   if (reason === "ENROLMENT_CLOSED") return fail(res, 409, "Enrolment for this programme is closed", "ENROLMENT_CLOSED");
   return fail(res, 409, "This programme is full", "COHORT_FULL");
+};
+
+
+// ---------------------------------------------------------------------------------------------------------------
+// Enrolment lifecycle (spec 26)
+// ---------------------------------------------------------------------------------------------------------------
+
+const ENROLMENT_MOVES = {
+  active: ["suspended", "withdrawn", "completed"],
+  suspended: ["active", "withdrawn"],
+  completed: [],
+  withdrawn: [],
+};
+// These moves must carry a reason the student can be shown
+const NEEDS_REASON = ["suspended", "withdrawn"];
+
+/** Appends a history entry and sets the status, creating the record on first use. */
+const recordEnrolment = (cohortId, userId, status, { note = "", by = null } = {}) =>
+  CohortEnrolment.findOneAndUpdate(
+    { cohortId, userId },
+    { $set: { status }, $setOnInsert: { enrolledAt: new Date() }, $push: { history: { status, note, by, at: new Date() } } },
+    { upsert: true, returnDocument: "after" }
+  );
+
+/** Current status of a student in a cohort. Members with no record yet (joined before spec 26) count as active. */
+const enrolmentStatusOf = async (cohort, userId) => {
+  const record = await CohortEnrolment.findOne({ cohortId: cohort._id, userId });
+  if (record) return { record, status: record.status };
+  const member = (cohort.studentIds ?? []).some((id) => String(id) === String(userId));
+  return { record: null, status: member ? "active" : null };
+};
+
+/** What is still missing before a Trimester may be published. Empty means ready. */
+const readinessOf = async (trimester, now = new Date()) => {
+  const missing = [];
+  if (!trimester.title?.trim()) missing.push("a title");
+  if (!trimester.description?.trim()) missing.push("a description");
+  if (!trimester.enrollmentClosesAt || new Date(trimester.enrollmentClosesAt) <= now) missing.push("an enrolment close date in the future");
+
+  const cohorts = await Cohort.find({ trimesterId: trimester._id }).select("name instructorIds capacity courseId").lean();
+  if (cohorts.length === 0) {
+    missing.push("at least one programme (cohort)");
+    return missing;
+  }
+  const courses = await Course.find({ _id: { $in: cohorts.map((c) => c.courseId) } }).select("status").lean();
+  const courseById = new Map(courses.map((c) => [String(c._id), c]));
+  for (const cohort of cohorts) {
+    if (!cohort.instructorIds?.length) missing.push(`a tutor for "${cohort.name}"`);
+    if (!(cohort.capacity >= 1)) missing.push(`seats for "${cohort.name}"`);
+    if (courseById.get(String(cohort.courseId))?.status !== "published") missing.push(`a published course for "${cohort.name}"`);
+  }
+  return missing;
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -177,6 +231,11 @@ export const updateTrimester = async (req, res, next) => {
       if (!TRIMESTER_STATUSES.includes(body.status)) return fail(res, 400, `status must be one of: ${TRIMESTER_STATUSES.join(", ")}`);
       trimester.status = body.status;
     }
+    if (body.archived !== undefined) {
+      if (typeof body.archived !== "boolean") return fail(res, 400, "archived must be true or false");
+      trimester.archivedAt = body.archived ? trimester.archivedAt ?? new Date() : null;
+    }
+    const publishing = body.isPublished === true && !trimester.isPublished;
     if (body.isPublished !== undefined) {
       if (typeof body.isPublished !== "boolean") return fail(res, 400, "isPublished must be true or false");
       trimester.isPublished = body.isPublished;
@@ -193,6 +252,12 @@ export const updateTrimester = async (req, res, next) => {
     const dateError = trimesterDateError(dates);
     if (dateError) return fail(res, 400, dateError);
     Object.assign(trimester, dates);
+
+    // Publishing is checked on the server against everything the update just set
+    if (publishing) {
+      const missing = await readinessOf(trimester);
+      if (missing.length) return fail(res, 422, `Not ready to publish. Missing: ${missing.join(", ")}`, "NOT_READY_TO_PUBLISH", { missing });
+    }
 
     await trimester.save();
     return res.status(200).json({ trimester });
@@ -352,6 +417,8 @@ export const addCohortStudent = async (req, res, next) => {
     if (!seat.cohort) return seatFailure(res, seat.reason);
 
     await ensureCourseEnrollment(student._id, cohort.courseId);
+    await recordEnrolment(seat.cohort._id, student._id, "active", { note: "Added by an administrator", by: req.user._id });
+    await notifyUsers([student._id], { title: "Enrolment confirmed", message: `You have been enrolled in "${seat.cohort.name}".`, type: "enrolment_confirmed", link: "/lms" });
     return res.status(201).json({ message: "Student added to cohort", studentCount: seat.cohort.studentIds.length });
   } catch (error) {
     next(error);
@@ -371,6 +438,7 @@ export const removeCohortStudent = async (req, res, next) => {
       const exists = await Cohort.exists({ _id: req.params.id });
       return fail(res, 404, exists ? "This student is not in the cohort" : "Cohort not found");
     }
+    await recordEnrolment(cohort._id, req.params.userId, "withdrawn", { note: "Removed by an administrator", by: req.user._id });
     return res.status(200).json({ message: "Student removed from cohort", studentCount: cohort.studentIds.length });
   } catch (error) {
     next(error);
@@ -389,7 +457,8 @@ const loadProgrammes = async (trimesterIds, viewerId, { withWeeks }) => {
     .sort({ createdAt: 1 })
     .lean();
 
-  const courseFields = withWeeks ? "title description price modules.title modules.lessons._id" : "title description price";
+  const baseFields = "title slug description price thumbnail trailerVideoUrl level language skills targetAudience requirements";
+  const courseFields = withWeeks ? `${baseFields} modules.title modules.lessons._id` : baseFields;
   const [courses, tutors] = await Promise.all([
     Course.find({ _id: { $in: cohorts.map((c) => c.courseId) } }).select(courseFields).lean(),
     User.find({ _id: { $in: cohorts.flatMap((c) => c.instructorIds ?? []) } }).select("firstName lastName name").lean(),
@@ -420,6 +489,15 @@ const loadProgrammes = async (trimesterIds, viewerId, { withWeeks }) => {
       courseId: cohort.courseId,
       title: course?.title ?? cohort.name,
       description: course?.description ?? "",
+      slug: course?.slug ?? null,
+      // Landing page content comes from the course the tutor authored
+      thumbnail: course?.thumbnail || null,
+      trailerVideoUrl: course?.trailerVideoUrl || null,
+      level: course?.level ?? null,
+      language: course?.language ?? null,
+      skills: course?.skills ?? [],
+      targetAudience: course?.targetAudience ?? [],
+      requirements: course?.requirements ?? [],
       price: course?.price ?? 0,
       currency: CURRENCY,
       seats: cohort.capacity,
@@ -452,7 +530,7 @@ const publicTrimester = (trimester, programmes) => ({
 /** GET /api/lms/public/trimesters */
 export const getPublicTrimesters = async (req, res, next) => {
   try {
-    const trimesters = await Trimester.find({ isPublished: true, status: { $in: ["upcoming", "active"] } })
+    const trimesters = await Trimester.find({ isPublished: true, archivedAt: null, status: { $in: ["upcoming", "active"] } })
       .sort({ startDate: 1 })
       .lean();
     const programmes = await loadProgrammes(trimesters.map((t) => t._id), req.user?._id, { withWeeks: false });
@@ -471,7 +549,7 @@ export const getPublicTrimesters = async (req, res, next) => {
 export const getPublicTrimester = async (req, res, next) => {
   try {
     if (!isId(req.params.id)) return fail(res, 400, "Invalid trimester ID format");
-    const trimester = await Trimester.findOne({ _id: req.params.id, isPublished: true }).lean();
+    const trimester = await Trimester.findOne({ _id: req.params.id, isPublished: true, archivedAt: null }).lean();
     if (!trimester) return fail(res, 404, "Trimester not found");
     const programmes = await loadProgrammes([trimester._id], req.user?._id, { withWeeks: true });
     return res.status(200).json({ trimester: publicTrimester(trimester, programmes) });
@@ -487,7 +565,7 @@ export const enrolInCohort = async (req, res, next) => {
     if (!isId(req.params.cohortId)) return fail(res, 400, "Invalid cohort ID format");
 
     const cohort = await Cohort.findById(req.params.cohortId);
-    const trimester = cohort ? await Trimester.findOne({ _id: cohort.trimesterId, isPublished: true }) : null;
+    const trimester = cohort ? await Trimester.findOne({ _id: cohort.trimesterId, isPublished: true, archivedAt: null }) : null;
     if (!cohort || !trimester) return fail(res, 404, "Cohort not found");
 
     const state = enrolmentStateOf(trimester, cohort);
@@ -500,14 +578,201 @@ export const enrolInCohort = async (req, res, next) => {
       return fail(res, 409, "This programme requires payment. Self-enrolment is only available for free programmes.", "PAYMENT_REQUIRED");
     }
 
+    const existing = await CohortEnrolment.findOne({ cohortId: cohort._id, userId: req.user._id }).select("status");
+    if (existing?.status === "suspended") {
+      return fail(res, 409, "Your enrolment in this programme is suspended. Please contact support.", "ENROLMENT_SUSPENDED");
+    }
+
     const seat = await takeSeat(cohort._id, req.user._id, { requireEnrolling: true });
     if (!seat.cohort) return seatFailure(res, seat.reason);
 
     await ensureCourseEnrollment(req.user._id, cohort.courseId);
+    await recordEnrolment(cohort._id, req.user._id, "active", { note: existing ? "Re-enrolled" : "Enrolled" });
+    await notifyUsers([req.user._id], { title: "Enrolment confirmed", message: `You are enrolled in "${cohort.name}".`, type: "enrolment_confirmed", link: "/lms" });
     return res.status(201).json({
       message: "Enrolled successfully",
       cohortId: cohort._id,
       enrolment: { cohortId: cohort._id, courseId: cohort.courseId, enrolledAt: new Date() },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------------------------------------------
+// Enrolment lifecycle endpoints (spec 26)
+// ---------------------------------------------------------------------------------------------------------------
+
+const enrolmentView = (record, user) => ({
+  userId: record.userId,
+  name: user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : null,
+  email: user?.email ?? null,
+  status: record.status,
+  enrolledAt: record.enrolledAt ?? null,
+  history: record.history ?? [],
+});
+
+/** GET /api/lms/admin/cohorts/:id/enrolments */
+export const listCohortEnrolments = async (req, res, next) => {
+  try {
+    if (!isId(req.params.id)) return fail(res, 400, "Invalid cohort ID format");
+    const cohort = await Cohort.findById(req.params.id).select("studentIds").lean();
+    if (!cohort) return fail(res, 404, "Cohort not found");
+
+    const records = await CohortEnrolment.find({ cohortId: cohort._id }).lean();
+    const recorded = new Set(records.map((r) => String(r.userId)));
+    // Members from before spec 26 have no record yet: show them as active
+    const implicit = (cohort.studentIds ?? []).filter((id) => !recorded.has(String(id))).map((id) => ({ userId: id, status: "active", enrolledAt: null, history: [] }));
+    const all = [...records, ...implicit];
+    const users = await User.find({ _id: { $in: all.map((r) => r.userId) } }).select("firstName lastName email").lean();
+    const userById = new Map(users.map((u) => [String(u._id), u]));
+
+    const enrolments = all.map((r) => enrolmentView(r, userById.get(String(r.userId))));
+    const counts = Object.fromEntries(ENROLMENT_STATUSES.map((status) => [status, enrolments.filter((e) => e.status === status).length]));
+    return res.status(200).json({ enrolments, counts });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** PUT /api/lms/admin/cohorts/:id/enrolments/:userId/status  { status, reason } */
+export const setEnrolmentStatus = async (req, res, next) => {
+  try {
+    if (!isId(req.params.id) || !isId(req.params.userId)) return fail(res, 400, "Invalid ID format");
+    const status = req.body?.status;
+    const reason = req.body?.reason ? String(req.body.reason).trim() : "";
+    if (!ENROLMENT_STATUSES.includes(status)) return fail(res, 400, `status must be one of: ${ENROLMENT_STATUSES.join(", ")}`);
+
+    const cohort = await Cohort.findById(req.params.id);
+    if (!cohort) return fail(res, 404, "Cohort not found");
+    const { record, status: current } = await enrolmentStatusOf(cohort, req.params.userId);
+    if (!current) return fail(res, 404, "This student has no enrolment in the cohort");
+
+    const allowed = ENROLMENT_MOVES[current] ?? [];
+    if (!allowed.includes(status)) {
+      return fail(res, 409, `An enrolment that is ${current} cannot become ${status}`, "INVALID_TRANSITION", { allowed });
+    }
+    if (NEEDS_REASON.includes(status) && !reason) return fail(res, 400, `A reason is required to make an enrolment ${status}`, "REASON_REQUIRED");
+
+    // Create the record for a member who joined before spec 26, so the conditional update below has something to guard
+    if (!record) await CohortEnrolment.updateOne({ cohortId: cohort._id, userId: req.params.userId }, { $setOnInsert: { status: "active", enrolledAt: new Date(), history: [{ status: "active", note: "Existing member", at: new Date() }] } }, { upsert: true });
+
+    if (status === "active") {
+      const seat = await takeSeat(cohort._id, req.params.userId, { requireEnrolling: false });
+      if (!seat.cohort) return seatFailure(res, seat.reason);
+    }
+
+    const updated = await CohortEnrolment.findOneAndUpdate(
+      { cohortId: cohort._id, userId: req.params.userId, status: current },
+      { $set: { status }, $push: { history: { status, note: reason, by: req.user._id, at: new Date() } } },
+      { returnDocument: "after" }
+    );
+    if (!updated) {
+      if (status === "active") await Cohort.updateOne({ _id: cohort._id }, { $pull: { studentIds: req.params.userId } });
+      return fail(res, 409, "This enrolment was changed by someone else. Reload and try again.", "CONCURRENT_CHANGE");
+    }
+
+    // Suspended and withdrawn students lose access and free their seat; their record and progress stay
+    if (status === "suspended" || status === "withdrawn") await Cohort.updateOne({ _id: cohort._id }, { $pull: { studentIds: req.params.userId } });
+
+    if (status !== "completed") {
+      const text = { suspended: "suspended", active: "reinstated", withdrawn: "ended by an administrator" }[status];
+      await notifyUsers([req.params.userId], { title: "Enrolment update", message: `Your enrolment in "${cohort.name}" was ${text}.${reason ? ` ${reason}` : ""}`, type: "enrolment_update", link: "/lms" });
+    }
+    return res.status(200).json({ enrolment: enrolmentView(updated, null) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** PUT /api/lms/cohorts/:cohortId/withdraw  (student withdraws themselves) */
+export const withdrawFromCohort = async (req, res, next) => {
+  try {
+    if (req.user.role !== "student") return fail(res, 403, "Only students can withdraw from a programme");
+    if (!isId(req.params.cohortId)) return fail(res, 400, "Invalid cohort ID format");
+    const cohort = await Cohort.findById(req.params.cohortId);
+    if (!cohort) return fail(res, 404, "Cohort not found");
+
+    const { status } = await enrolmentStatusOf(cohort, req.user._id);
+    if (!status) return fail(res, 404, "You are not enrolled in this programme");
+    if (status !== "active") return fail(res, 409, `An enrolment that is ${status} cannot be withdrawn`, "INVALID_TRANSITION");
+    if (["completed", "archived"].includes(cohort.status)) return fail(res, 409, "This programme has finished, so it can no longer be withdrawn from", "COHORT_FINISHED");
+
+    const updated = await recordEnrolment(cohort._id, req.user._id, "withdrawn", { note: req.body?.reason ? String(req.body.reason).trim() : "Withdrew" , by: req.user._id });
+    await Cohort.updateOne({ _id: cohort._id }, { $pull: { studentIds: req.user._id } });
+    return res.status(200).json({ message: "You have withdrawn from this programme", enrolment: enrolmentView(updated, null) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/lms/enrolments/me */
+export const getMyEnrolments = async (req, res, next) => {
+  try {
+    const [records, memberCohorts] = await Promise.all([
+      CohortEnrolment.find({ userId: req.user._id }).lean(),
+      Cohort.find({ studentIds: req.user._id }).select("_id").lean(),
+    ]);
+    const recorded = new Set(records.map((r) => String(r.cohortId)));
+    const implicit = memberCohorts.filter((c) => !recorded.has(String(c._id))).map((c) => ({ cohortId: c._id, status: "active", enrolledAt: null, history: [] }));
+    const all = [...records, ...implicit];
+
+    const cohorts = await Cohort.find({ _id: { $in: all.map((r) => r.cohortId) } }).populate("trimesterId", "title").populate("courseId", "title").lean();
+    const cohortById = new Map(cohorts.map((c) => [String(c._id), c]));
+    return res.status(200).json({
+      enrolments: all
+        .filter((r) => cohortById.has(String(r.cohortId)))
+        .map((r) => {
+          const c = cohortById.get(String(r.cohortId));
+          return {
+            cohortId: r.cohortId,
+            cohortName: c.name,
+            programmeTitle: c.courseId?.title ?? c.name,
+            trimester: c.trimesterId ? { _id: c.trimesterId._id, title: c.trimesterId.title } : null,
+            status: r.status,
+            enrolledAt: r.enrolledAt ?? null,
+            history: (r.history ?? []).map(({ status, note, at }) => ({ status, note, at })),
+          };
+        }),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/lms/admin/trimesters/:id/preview  (the public view of a Trimester even when it is a draft or archived, plus readiness) */
+export const previewTrimester = async (req, res, next) => {
+  try {
+    if (!isId(req.params.id)) return fail(res, 400, "Invalid trimester ID format");
+    const trimester = await Trimester.findById(req.params.id).lean();
+    if (!trimester) return fail(res, 404, "Trimester not found");
+    const programmes = await loadProgrammes([trimester._id], req.user._id, { withWeeks: true });
+    const missing = await readinessOf(trimester);
+    return res.status(200).json({
+      trimester: { ...publicTrimester(trimester, programmes), isPublished: trimester.isPublished, archivedAt: trimester.archivedAt ?? null },
+      readiness: { ready: missing.length === 0, missing },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** GET /api/lms/public/programmes/:cohortId  (the public landing page of one Trimester course; optional token) */
+export const getPublicProgramme = async (req, res, next) => {
+  try {
+    if (!isId(req.params.cohortId)) return fail(res, 400, "Invalid programme ID format");
+    const cohort = await Cohort.findById(req.params.cohortId).select("trimesterId status").lean();
+    const trimester = cohort ? await Trimester.findOne({ _id: cohort.trimesterId, isPublished: true, archivedAt: null }).lean() : null;
+    if (!cohort || !trimester || !PUBLIC_COHORT_STATUSES.includes(cohort.status)) return fail(res, 404, "Programme not found");
+
+    const programmes = await loadProgrammes([trimester._id], req.user?._id, { withWeeks: true });
+    const entry = programmes.find(({ programme }) => String(programme._id) === String(cohort._id));
+    if (!entry) return fail(res, 404, "Programme not found");
+
+    const { programmes: _omitted, ...trimesterSummary } = publicTrimester(trimester, [entry]);
+    return res.status(200).json({
+      trimester: trimesterSummary,
+      programme: { ...entry.programme, enrolmentState: enrolmentStateOf(trimester, entry.cohort) },
     });
   } catch (error) {
     next(error);

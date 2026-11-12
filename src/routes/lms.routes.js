@@ -5,6 +5,9 @@ import { cohortGuard } from "../middlewares/cohort.middleware.js";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuth.middleware.js";
 import { forumPostLimiter } from "../middlewares/rateLimiter.middleware.js";
 
+// Unit 27 Controllers
+import { getContinueLearning, getSupportFlags, updateSupportThresholds } from "../controllers/lmsEngagement.controller.js";
+
 // Unit 25 Controllers
 import {
   createScholarship,
@@ -31,6 +34,12 @@ import {
   getPublicTrimesters,
   getPublicTrimester,
   enrolInCohort,
+  listCohortEnrolments,
+  setEnrolmentStatus,
+  withdrawFromCohort,
+  getMyEnrolments,
+  previewTrimester,
+  getPublicProgramme,
 } from "../controllers/lmsTrimester.controller.js";
 
 // Unit 19 Controllers
@@ -123,6 +132,7 @@ import {
   getCertificatePdf,
   verifyCertificate,
   revokeCertificate,
+  issueCertificate,
   reissueCertificate,
 } from "../controllers/lmsCertificate.controller.js";
 import {
@@ -265,7 +275,14 @@ router.get("/admin/certificates/recent", authGuard, roleGuard("admin"), getRecen
 // ==========================================
 router.get("/public/trimesters", optionalAuthMiddleware, getPublicTrimesters);
 router.get("/public/trimesters/:id", optionalAuthMiddleware, getPublicTrimester);
+router.get("/public/programmes/:cohortId", optionalAuthMiddleware, getPublicProgramme);
 router.post("/cohorts/:cohortId/enrol", authGuard, enrolInCohort);
+
+router.put("/cohorts/:cohortId/withdraw", authGuard, withdrawFromCohort);
+router.get("/enrolments/me", authGuard, getMyEnrolments);
+router.get("/admin/trimesters/:id/preview", authGuard, roleGuard("admin"), previewTrimester);
+router.get("/admin/cohorts/:id/enrolments", authGuard, roleGuard("admin"), listCohortEnrolments);
+router.put("/admin/cohorts/:id/enrolments/:userId/status", authGuard, roleGuard("admin"), setEnrolmentStatus);
 
 router.post("/admin/trimesters", authGuard, roleGuard("admin"), createTrimester);
 router.get("/admin/trimesters", authGuard, roleGuard("admin"), listTrimesters);
@@ -289,5 +306,13 @@ router.get("/admin/scholarships", authGuard, roleGuard("admin"), listScholarship
 router.put("/admin/scholarships/:id", authGuard, roleGuard("admin"), updateScholarship);
 router.get("/admin/scholarships/:id/applications", authGuard, roleGuard("admin"), listApplicationsAdmin);
 router.put("/admin/scholarship-applications/:id/status", authGuard, roleGuard("admin"), setApplicationStatus);
+
+// ==========================================
+// Unit 27: Engagement, support flags and certificate issuing
+// ==========================================
+router.get("/continue-learning", authGuard, cohortGuard, getContinueLearning);
+router.get("/instructor/cohorts/:cohortId/support-flags", authGuard, roleGuard("instructor"), getSupportFlags);
+router.put("/admin/cohorts/:id/support-thresholds", authGuard, roleGuard("admin"), updateSupportThresholds);
+router.post("/admin/cohorts/:cohortId/certificates", authGuard, roleGuard("admin"), issueCertificate);
 
 export default router;

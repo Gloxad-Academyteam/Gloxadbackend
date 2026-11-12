@@ -1,3 +1,4 @@
+import { notifyUsers } from "../utils/notify.js";
 import { Cohort } from "../models/Cohort.model.js";
 import { User } from "../models/User.model.js";
 import { LmsLiveSession } from "../models/LmsLiveSession.model.js";
@@ -370,6 +371,7 @@ export const createCohortAnnouncement = async (req, res, next) => {
 
     cohort.announcements.push(newAnnouncement);
     await cohort.save();
+    await notifyUsers(cohort.studentIds, { title: "New announcement", message: newAnnouncement.title, type: "new_announcement", link: "/lms" });
 
     return res.status(201).json({
       message: "Announcement posted successfully",
